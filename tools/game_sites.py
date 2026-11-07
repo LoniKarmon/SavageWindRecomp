@@ -278,6 +278,18 @@ SITES = [
     # sead::LookAtCamera::doUpdateMatrix (tools/patches.py _lookat_update): its first load of the eye (+0x38); eye,
     # at (+0x44) and up (+0x50) make the view matrix written to x1 (free camera, runtime/hle/freecam.c)
     Site('lookat_update', 'code', '2d470801 2d480c00 1e232020 2d491404 1e240440 1e250400 54000000/ff00001f 1e233823', 0),
+    # Cursour(agl debug)'s setup (its load of the debug cursor's pool object at +0x70, tools/patches.py
+    # _debug_cursor_pool_guard): the game never maps the debug pool here, so that slot stays empty and the very
+    # next load (the pool object's vtable) dereferences 0 — the crash before the first frame of issue #472.
+    Site('debug_cursor_pool_guard', 'code', 'f9403a60 a904a3f5 f9400008 f9401908 d63f0100 b4000000/ff00001f '
+         'aa0003f4 910123e0', 0),
+    # Cursour(agl debug)'s pane update (its first instruction, tools/patches.py _debug_cursor_pane_guard), one step
+    # past the pool guard: with the cursor's setup skipped the cursor is never made, so the pane the boot chain
+    # hands this update as x1 — the caller's [param+0x20], a slot its ctor never writes — stays empty, and the
+    # update's first load through the pane (its vtable) dereferences 0. Guard its entry, not each load: all of
+    # them go through the same pane.
+    Site('debug_cursor_pane_guard', 'code', 'a9ba7bfd a9016ffc 910003fd a90267fa a9035ff8 a90457f6 a9054ff4 '
+         'd110c3ff f9400048', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -313,6 +325,10 @@ OPTIONAL_GROUPS = [
     ('no_wear_hit', 'no_wear_ret'),
     ('link_life_store', 'link_life_tick'),
     ('stamina_store',),
+    ('debug_cursor_pool_guard', 'debug_cursor_pane_guard'),  # (the boot crash, both its faults: without them a
+                                   # machine where the game leaves the debug cursor's pool slot empty faults on the
+                                   # pool object's vtable before the first frame — and past that guard, on the
+                                   # pane the skipped setup never made)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -480,6 +496,8 @@ KNOWN = {
         'link_life_store': 0x7000cc4e70,
         'link_life_tick': 0x7000cc4da4,
         'stamina_store': 0x7000cc7430,
+        'debug_cursor_pool_guard': 0x7000ef7a94,
+        'debug_cursor_pane_guard': 0x7000ef867c,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

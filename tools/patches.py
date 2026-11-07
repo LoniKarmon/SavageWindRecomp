@@ -806,6 +806,33 @@ def _lookat_update(gen, a):
             f'  /* {a:#x}: ldp s1, s2, [x0, #0x38] (LookAtCamera view: eye x, y) */')
 
 
+# Cursour(agl debug)'s setup (game_sites.py debug_cursor_pool_guard): its load of the debug cursor's pool object
+# (+0x70, empty on machines where the game never maps the pool it asked the system for: issue #472's crash before
+# the first frame). Guard it: with no pool object, hand the game its own null and take the device call's own null
+# path — the `cbz x0` twelve words ahead skips to its target, past the cursor's whole setup, and the function
+# returns as the game's release build returns it, the debug cursor never made and nothing dereferenced again.
+def _debug_cursor_pool_guard(gen, a):
+    assert _word(gen, a) == 0xf9403a60, hex(_word(gen, a))  # ldr x0, [x19, #0x70]
+    w = _word(gen, a + 0x14)
+    assert w & 0xFC00001F == 0xB4000000, hex(w)  # the skip: cbz x0, <the setup's end>
+    skip = a + 0x14 + sext((w >> 5) & 0x7FFFF, 19) * 4
+    return (f'{{ uint64_t pool = LD64(c->x[19] + 0x70); c->x[0] = pool; '
+            f'if (!pool) goto L_{skip:x}; }}'
+            f'  /* {a:#x}: ldr x0, [x19, #0x70] (Cursour debug: pool object, guarded) */')
+
+
+# The same cursor's pane update (game_sites.py debug_cursor_pane_guard), one step past the pool guard: the pool
+# guard skips the cursor's whole setup, so the cursor is never made and the pane its boot chain passes as x1 — the
+# caller's [param+0x20], a slot its ctor never writes — stays empty; the update's first load through the pane (its
+# vtable) faults dereferencing 0. Guard the entry before any stack frame is pushed: with no pane return 0 (nothing
+# drawn) straight from the entry, landing in the caller's own pane-less path right after its call, as the guest's
+# own `cbz` exit takes it. The pool guard alone would fault again on every such update, not just the boot one.
+def _debug_cursor_pane_guard(gen, a):
+    assert _word(gen, a) == 0xa9ba7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x60]!
+    return ('{ if (!c->x[1]) { c->x[0] = 0; return; } }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x60]! (Cursour debug: pane update, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -892,6 +919,8 @@ PATCHES = {
     'link_life_store': _link_life,
     'link_life_tick': _link_life,
     'stamina_store': _stamina,
+    'debug_cursor_pool_guard': _debug_cursor_pool_guard,
+    'debug_cursor_pane_guard': _debug_cursor_pane_guard,
 }
 
 

@@ -318,6 +318,13 @@ SITES = [
     # the empty-name path (hash 0) is the one it takes for a name of nothing.
     Site('debug_menu_hash_guard', 'code', 'f94006a9 39400128 34000008/ff00001f 2a1f03f5 91000529 1b147eaa '
          '0b288155 38401528', 0),
+    # agl's ShaderHolder queue (the title screen's first shader link, f_7000f9e384's first load through the
+    # holder's queue member — its [holder+0x28], empty on machines whose boot never filled it, tools/patches.py
+    # _shader_queue_guard): with no queue nothing is linked yet, and the count-load's own <1 exit returns as the
+    # game's own answer for an empty queue (its out params were already zeroed; its single caller ignores the
+    # result). The queue is dereferenced nowhere else — this one load guards the whole member.
+    Site('shader_queue_guard', 'code', 'b942dada 7100075f 5400000b/ff00001f 914152c8 2a1f03fb '
+         '9000001c/9f00001f 9100039c/ffc003ff 91348108', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -362,6 +369,8 @@ OPTIONAL_GROUPS = [
                                    # functions, all entered through their vtable, look a page up by its key's
                                    # name — 0 where the menu's init left it empty; every dereference of that
                                    # name guarded, each to its function's own empty-name path)
+    ('shader_queue_guard',),  # (the title screen's first shader link, on a machine where the shader holder's
+                                   # queue member stayed empty: guard its first load, its empty-queue exit runs)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -537,6 +546,7 @@ KNOWN = {
         'debug_menu_cand_guard': 0x7000f2a19c,
         'debug_menu_path_guard': 0x7000f2a1fc,
         'debug_menu_hash_guard': 0x7000f2a4dc,
+        'shader_queue_guard': 0x7000f9e3c4,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

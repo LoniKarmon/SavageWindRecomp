@@ -905,6 +905,23 @@ def _debug_menu_hash_guard(gen, a):
             f'  /* {a:#x}: ldr x9, [x21, #8] (Debug menu page hash: key name, guarded) */')
 
 
+# The title screen's first shader link (game_sites.py shader_queue_guard, tools/patches.py _shader_queue_guard):
+# f_700106ecd4 takes the agl ShaderHolder singleton's queue member ([holder+0x28]) — empty where the boot never
+# filled it — and f_7000f9e384's first load through it ([queue+0x2d8], the linked-program count) faults on 0
+# (run34's crash: `accessing 0x2d8`). The count-load's own <1 exit is the game's answer for a queue with nothing
+# in it; the guard takes it with a null queue, and the function returns as it returns for an empty queue.
+
+def _shader_queue_guard(gen, a):
+    assert _word(gen, a) == 0xb942dada, hex(_word(gen, a))  # ldr w26, [x22, #0x2d8]
+    assert _word(gen, a + 4) == 0x7100075f, hex(_word(gen, a + 4))  # cmp w26, #1
+    w = _word(gen, a + 8)
+    assert w & 0xFC000000 == 0x54000000, hex(w)  # the count < 1 exit: b.lt <the epilogue>
+    skip = a + 8 + sext((w >> 5) & 0x7FFFF, 19) * 4
+    return (f'{{ uint64_t q = c->x[22]; if (!q) {{ c->x[0] = 0; goto L_{skip:x}; }} '
+            f'c->x[26] = LD32(q + 0x2d8); }}'
+            f'  /* {a:#x}: ldr w26, [x22, #0x2d8] (agl ShaderHolder queue, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -999,6 +1016,7 @@ PATCHES = {
     'debug_menu_cand_guard': _debug_menu_cand_guard,
     'debug_menu_path_guard': _debug_menu_path_guard,
     'debug_menu_hash_guard': _debug_menu_hash_guard,
+    'shader_queue_guard': _shader_queue_guard,
 }
 
 

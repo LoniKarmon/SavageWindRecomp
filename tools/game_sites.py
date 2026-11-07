@@ -325,6 +325,17 @@ SITES = [
     # result). The queue is dereferenced nowhere else — this one load guards the whole member.
     Site('shader_queue_guard', 'code', 'b942dada 7100075f 5400000b/ff00001f 914152c8 2a1f03fb '
          '9000001c/9f00001f 9100039c/ffc003ff 91348108', 0),
+    # run35's debug-menu registration crash (tools/patches.py _debug_menu_reg_*): the title's registration calls
+    # f_7000ec74d8 and f_7000ec7690 with a null table object — the debug menu whose init never completed reports
+    # 0 entries and the caller's csel hands the wrappers xzr — and the count store through table+0x288/0x2b8
+    # faults (0x2b8). Entry guards; plus the same table's copy variant f_7000ec7708, whose first load is that
+    # +0x2b8 count. With no table there is nothing to register: return, the guest's ret at the entry.
+    Site('debug_menu_reg_288_guard', 'code', 'a9bc7bfd a9015ff8 a90257f6 a9034ff4 910003fd aa0003f5 '
+         '910a2000 aa0203f3', 0),
+    Site('debug_menu_reg_2b8_guard', 'code', 'a9bc7bfd a9015ff8 a90257f6 a9034ff4 910003fd aa0003f5 '
+         '910ae000 aa0203f3', 0),
+    Site('debug_menu_reg_copy_guard', 'code', 'a9bb7bfd f9000bf9 a9025ff8 a90357f6 a9044ff4 910003fd '
+         'b942b808 52800316', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -371,6 +382,9 @@ OPTIONAL_GROUPS = [
                                    # name guarded, each to its function's own empty-name path)
     ('shader_queue_guard',),  # (the title screen's first shader link, on a machine where the shader holder's
                                    # queue member stayed empty: guard its first load, its empty-queue exit runs)
+    ('debug_menu_reg_288_guard', 'debug_menu_reg_2b8_guard', 'debug_menu_reg_copy_guard'),  # (the title's debug-
+                                   # menu entry registration, on a table the half-initialized menu never built:
+                                   # entry guards on the two wrappers and the copy variant, nothing to register)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -547,6 +561,9 @@ KNOWN = {
         'debug_menu_path_guard': 0x7000f2a1fc,
         'debug_menu_hash_guard': 0x7000f2a4dc,
         'shader_queue_guard': 0x7000f9e3c4,
+        'debug_menu_reg_288_guard': 0x7000ec74d8,
+        'debug_menu_reg_2b8_guard': 0x7000ec7690,
+        'debug_menu_reg_copy_guard': 0x7000ec7708,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

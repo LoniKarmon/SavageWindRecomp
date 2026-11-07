@@ -922,6 +922,44 @@ def _shader_queue_guard(gen, a):
             f'  /* {a:#x}: ldr w26, [x22, #0x2d8] (agl ShaderHolder queue, guarded) */')
 
 
+# The debug menu's entry registration (game_sites.py debug_menu_reg_* guards, tools/patches.py): run35's crash —
+# the title's registration step (f_700125682c) hands the two registration wrappers a null table object: the debug
+# menu whose init the boot never completed reports 0 entries ([x21+0x38]), and the caller's csel turns that into
+# xzr (the table the menu never built). The wrappers add the table's entry-vector members — +0x288 and +0x2b8 —
+# to it and pass the result to their fill twins (f_7000ec8eb8/f_7000ec8f4c), whose first store writes the entry
+# count straight through it: str w20,[x19] on 0x2b8 was the fault. The third sibling f_7000ec7708 takes the same
+# table directly and loads that +0x2b8 count as its first word. Guard each at the entry, before the frame is
+# pushed: with no table there is nothing to register — return, the guest's ret, the wrappers' and the copy
+# variant's results ignored by every caller (their 104/105/294 bl sites); the fill twins are only ever called
+# from inside the wrappers, so the null table is never dereferenced again. The fall-through replays the pushed-
+# frame prologue (the pre-index stp's writeback and x29/x30 stores) so the real tables are untouched.
+
+
+def _debug_menu_reg_288_guard(gen, a):
+    # f_7000ec74d8: entry guard on its first stp, pinned by the table+0x288 add six words in
+    assert _word(gen, a) == 0xa9bc7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x40]!
+    assert _word(gen, a + 0x18) == 0x910a2000, hex(_word(gen, a + 0x18))  # add x0, x0, #0x288 (the entry vector)
+    return ('{ if (!c->x[0]) return; c->sp -= 0x40; ST64(c->sp, c->x[29]); ST64(c->sp + 8, c->x[30]); }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x40]! (Debug menu reg +0x288: table, guarded) */')
+
+
+def _debug_menu_reg_2b8_guard(gen, a):
+    # f_7000ec7690: the same guard one shape over, on the +0x2b8 entry vector — run35's faulting wrapper
+    assert _word(gen, a) == 0xa9bc7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x40]!
+    assert _word(gen, a + 0x18) == 0x910ae000, hex(_word(gen, a + 0x18))  # add x0, x0, #0x2b8 (the entry vector)
+    return ('{ if (!c->x[0]) return; c->sp -= 0x40; ST64(c->sp, c->x[29]); ST64(c->sp + 8, c->x[30]); }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x40]! (Debug menu reg +0x2b8: table, guarded) */')
+
+
+def _debug_menu_reg_copy_guard(gen, a):
+    # f_7000ec7708: the same table's copy variant (bl f_7000ea69cc fills a copy of the entry vector) — its first
+    # load is the +0x2b8 count, so a null table faults here too wherever one of its many callers passes it
+    assert _word(gen, a) == 0xa9bb7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x50]!
+    assert _word(gen, a + 0x18) == 0xb942b808, hex(_word(gen, a + 0x18))  # ldr w8, [x0, #0x2b8] (the entry count)
+    return ('{ if (!c->x[0]) return; c->sp -= 0x50; ST64(c->sp, c->x[29]); ST64(c->sp + 8, c->x[30]); }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x50]! (Debug menu reg copy: table, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1017,6 +1055,9 @@ PATCHES = {
     'debug_menu_path_guard': _debug_menu_path_guard,
     'debug_menu_hash_guard': _debug_menu_hash_guard,
     'shader_queue_guard': _shader_queue_guard,
+    'debug_menu_reg_288_guard': _debug_menu_reg_288_guard,
+    'debug_menu_reg_2b8_guard': _debug_menu_reg_2b8_guard,
+    'debug_menu_reg_copy_guard': _debug_menu_reg_copy_guard,
 }
 
 

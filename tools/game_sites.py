@@ -290,6 +290,28 @@ SITES = [
     # them go through the same pane.
     Site('debug_cursor_pane_guard', 'code', 'a9ba7bfd a9016ffc 910003fd a90267fa a9035ff8 a90457f6 a9054ff4 '
          'd110c3ff f9400048', 0),
+    # seadDebugMenuSystem's page lookup's entry (its load of the key's name for the byte-by-byte hash loop,
+    # tools/patches.py _debug_menu_key_guard): with the key's name empty it hashes 0 through its own cbz's skip,
+    # which is the answer for a name that isn't there (the search still ends in the game's not-found path).
+    Site('debug_menu_key_guard', 'code', 'f9400669 39400128 34000008/ff00001f 2a1f03f7 91000529 1b157eea '
+         '0b288157 38401528', 0),
+    # the same lookup's second name load, feeding the key's virtual name getter and the same-pointer compare
+    # (its load at +0x8, tools/patches.py _debug_menu_len_guard): a null name is treated as the compare loop's
+    # mismatch (advance the search), never as a name the search could mistake for a page's.
+    Site('debug_menu_len_guard', 'code', 'f9400675 f9400d08 d63f0100 f94007e8 eb0802bf 54000000/ff00001f '
+         'f9400669 aa1b03ea', 0),
+    # the same lookup's string compare, re-loading the key's name (tools/patches.py _debug_menu_page_guard):
+    # a page named without a name faults this byte-by-byte compare on 0 — run32's crash.
+    Site('debug_menu_page_guard', 'code', 'f9400669 aa1b03ea 3840152b 3840150c 6b0c017f 54000001/ff00001f '
+         '3400000b/ff00001f f100054a 54000001/ff00001f 91000739', 0),
+    # the page name's '/'-splitting step (its load of the name at +0x8, tools/patches.py _debug_menu_path_guard):
+    # the empty-name path it already takes (return true, page 0) is the right answer for a name that isn't there.
+    Site('debug_menu_path_guard', 'code', 'f9400448 aa0103f3 39400108 34000008/ff00001f f9400048 aa0203e0 '
+         'aa0203f4 f9400d08', 0),
+    # the page lookup by hash (its load of the key's name at +0x8, tools/patches.py _debug_menu_hash_guard):
+    # the empty-name path (hash 0) is the one it takes for a name of nothing.
+    Site('debug_menu_hash_guard', 'code', 'f94006a9 39400128 34000008/ff00001f 2a1f03f5 91000529 1b147eaa '
+         '0b288155 38401528', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -329,6 +351,11 @@ OPTIONAL_GROUPS = [
                                    # machine where the game leaves the debug cursor's pool slot empty faults on the
                                    # pool object's vtable before the first frame — and past that guard, on the
                                    # pane the skipped setup never made)
+    ('debug_menu_key_guard', 'debug_menu_len_guard', 'debug_menu_page_guard',
+     'debug_menu_path_guard', 'debug_menu_hash_guard'),  # (one step past the cursor: the debug menu's page/item
+                                   # functions, all entered through their vtable, look a page up by its key's
+                                   # name — 0 where the menu's init left it empty; every dereference of that
+                                   # name guarded, each to its function's own empty-name path)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -498,6 +525,11 @@ KNOWN = {
         'stamina_store': 0x7000cc7430,
         'debug_cursor_pool_guard': 0x7000ef7a94,
         'debug_cursor_pane_guard': 0x7000ef867c,
+        'debug_menu_key_guard': 0x7000f29fac,
+        'debug_menu_len_guard': 0x7000f2a190,
+        'debug_menu_page_guard': 0x7000f2a1a8,
+        'debug_menu_path_guard': 0x7000f2a1fc,
+        'debug_menu_hash_guard': 0x7000f2a4dc,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

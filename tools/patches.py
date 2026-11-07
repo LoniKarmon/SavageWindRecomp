@@ -833,6 +833,65 @@ def _debug_cursor_pane_guard(gen, a):
             f'  /* {a:#x}: stp x29, x30, [sp, #-0x60]! (Cursour debug: pane update, guarded) */')
 
 
+# seadDebugMenuSystem's page functions (game_sites.py debug_menu_* guards, tools/patches.py): one step past the
+# debug cursor the pool guard skips, the debug menu's page-lookup functions look a page or item up by its key's
+# name — the char* at [key+8]. The menu init the boot never completed left the keys it builds with a null name,
+# and every one of these dereferences faults on 0 (run32's crash: the page find's own string compare). Each guard
+# re-checks the pointer the guest just loaded and takes that function's own empty-name path — the branch its byte
+# check would take for a "" name — which is the answer for a name that isn't there at all.
+
+
+def _debug_menu_key_guard(gen, a):
+    # the page find's entry (f_7000f29f4c): its load of the key's name (x19 = the key) for the byte-by-byte hash
+    # loop that computes the search hash; with no name the game's cbz skips the loop and the hash comes out 0
+    assert _word(gen, a) == 0xf9400669, hex(_word(gen, a))  # ldr x9, [x19, #8]
+    w = _word(gen, a + 8)
+    assert w & 0xFC000000 in (0xB4000000, 0x34000000), hex(w)  # the empty name's skip: cbz w8, <hash 0>
+    skip = a + 8 + sext((w >> 5) & 0x7FFFF, 19) * 4
+    return (f'{{ uint64_t nm = LD64(c->x[19] + 8); c->x[9] = nm; if (!nm) goto L_{skip:x}; }}'
+            f'  /* {a:#x}: ldr x9, [x19, #8] (Debug menu page find: key name, guarded) */')
+
+
+def _debug_menu_len_guard(gen, a):
+    # the same find, its second key-name load (x21): the key's virtual name getter call and the same-pointer
+    # compare after it would take a null as a name, so treat it as the mismatch its compare loop reports for a
+    # name different from the page's — advance the search, which lands in the game's not-found answer
+    assert _word(gen, a) == 0xf9400675, hex(_word(gen, a))  # ldr x21, [x19, #8]
+    assert _word(gen, a + 4) == 0xf9400d08, hex(_word(gen, a + 4))  # ldr x8, [x8, #0x18] (the key's getter)
+    return ('{ uint64_t nm = LD64(c->x[19] + 8); c->x[21] = nm; if (!nm) goto L_7000f2a1cc; }'
+            f'  /* {a:#x}: ldr x21, [x19, #8] (Debug menu page find: key name, guarded) */')
+
+
+def _debug_menu_page_guard(gen, a):
+    # the same find's byte-by-byte string compare, re-loading the key's name: run32's fault (the compare loop's
+    # first byte load dereferences 0); with no name take the compare's not-equal branch — advance the search to
+    # the next slot, landing in the game's own not-found answer once the binary search runs out
+    assert _word(gen, a) == 0xf9400669, hex(_word(gen, a))  # ldr x9, [x19, #8]
+    assert _word(gen, a + 4) == 0xaa1b03ea, hex(_word(gen, a + 4))  # mov x10, x27 (the compare loop's bound)
+    return ('{ uint64_t nm = LD64(c->x[19] + 8); c->x[9] = nm; if (!nm) goto L_7000f2a1cc; }'
+            f'  /* {a:#x}: ldr x9, [x19, #8] (Debug menu page find: compare, guarded) */')
+
+
+def _debug_menu_path_guard(gen, a):
+    # the page name's '/'-splitting helper (f_7000f2a1f0): its load of the key's name (x2 = the key); its
+    # empty-name answer is return true with page 0 written to the out param (x19 = x1, set by the next guest
+    # instruction — the guard does it too, since it jumps the byte check that would have)
+    assert _word(gen, a) == 0xf9400448, hex(_word(gen, a))  # ldr x8, [x2, #8]
+    assert _word(gen, a + 4) == 0xaa0103f3, hex(_word(gen, a + 4))  # mov x19, x1 (the out param)
+    return ('{ uint64_t nm = LD64(c->x[2] + 8); c->x[8] = nm; c->x[19] = c->x[1]; '
+            'if (!nm) goto L_7000f2a284; }'
+            f'  /* {a:#x}: ldr x8, [x2, #8] (Debug menu page split: key name, guarded) */')
+
+
+def _debug_menu_hash_guard(gen, a):
+    # the lookup that hashes the key's name itself (f_7000f2a484): its load of the name (x21 = the key) into the
+    # hash loop; the empty-name path is the loop's own answer for nothing to hash (hash 0, L_7000f2a504)
+    assert _word(gen, a) == 0xf94006a9, hex(_word(gen, a))  # ldr x9, [x21, #8]
+    assert _word(gen, a + 4) == 0x39400128, hex(_word(gen, a + 4))  # ldrb w8, [x9] (the loop's byte load)
+    return ('{ uint64_t nm = LD64(c->x[21] + 8); c->x[9] = nm; if (!nm) goto L_7000f2a504; }'
+            f'  /* {a:#x}: ldr x9, [x21, #8] (Debug menu page hash: key name, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -921,6 +980,11 @@ PATCHES = {
     'stamina_store': _stamina,
     'debug_cursor_pool_guard': _debug_cursor_pool_guard,
     'debug_cursor_pane_guard': _debug_cursor_pane_guard,
+    'debug_menu_key_guard': _debug_menu_key_guard,
+    'debug_menu_len_guard': _debug_menu_len_guard,
+    'debug_menu_page_guard': _debug_menu_page_guard,
+    'debug_menu_path_guard': _debug_menu_path_guard,
+    'debug_menu_hash_guard': _debug_menu_hash_guard,
 }
 
 

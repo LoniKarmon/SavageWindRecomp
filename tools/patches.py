@@ -872,6 +872,19 @@ def _debug_menu_page_guard(gen, a):
             f'  /* {a:#x}: ldr x9, [x19, #8] (Debug menu page find: compare, guarded) */')
 
 
+def _debug_menu_cand_guard(gen, a):
+    # the same compare's other side (run33's fault, one step past the key guards): its load of the candidate
+    # page's name the page getter just returned into the temp at [sp+8] — the static page table's entries carry
+    # unpopulated names too, so that read-back can be 0, and the compare's byte load of it dereferences 0. With
+    # no candidate name the key (which the guards above already proved present) cannot equal it: take the
+    # compare's not-equal branch, exactly as the loop's first mismatch would. (The key-name guard rules out the
+    # both-null same-pointer match this skips; the search ends in its not-found answer either way.)
+    assert _word(gen, a) == 0xf94007e8, hex(_word(gen, a))  # ldr x8, [sp, #8]
+    assert _word(gen, a + 4) == 0xeb0802bf, hex(_word(gen, a + 4))  # cmp x21, x8 (the same-pointer test)
+    return ('{ uint64_t nm = LD64(c->sp + 8); c->x[8] = nm; if (!nm) goto L_7000f2a1cc; }'
+            f'  /* {a:#x}: ldr x8, [sp, #8] (Debug menu page find: candidate name, guarded) */')
+
+
 def _debug_menu_path_guard(gen, a):
     # the page name's '/'-splitting helper (f_7000f2a1f0): its load of the key's name (x2 = the key); its
     # empty-name answer is return true with page 0 written to the out param (x19 = x1, set by the next guest
@@ -983,6 +996,7 @@ PATCHES = {
     'debug_menu_key_guard': _debug_menu_key_guard,
     'debug_menu_len_guard': _debug_menu_len_guard,
     'debug_menu_page_guard': _debug_menu_page_guard,
+    'debug_menu_cand_guard': _debug_menu_cand_guard,
     'debug_menu_path_guard': _debug_menu_path_guard,
     'debug_menu_hash_guard': _debug_menu_hash_guard,
 }

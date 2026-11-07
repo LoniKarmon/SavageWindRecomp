@@ -304,6 +304,12 @@ SITES = [
     # a page named without a name faults this byte-by-byte compare on 0 — run32's crash.
     Site('debug_menu_page_guard', 'code', 'f9400669 aa1b03ea 3840152b 3840150c 6b0c017f 54000001/ff00001f '
          '3400000b/ff00001f f100054a 54000001/ff00001f 91000739', 0),
+    # the same compare's other side (its load of the candidate page's name the page getter just returned,
+    # tools/patches.py _debug_menu_cand_guard): the static page table's names are unpopulated too, and the
+    # compare's byte load of that null faulted one step past the key guards (run33's crash) — again the
+    # compare's not-equal answer is the right one for a name that isn't there (advance the search).
+    Site('debug_menu_cand_guard', 'code', 'f94007e8 eb0802bf 54000000/ff00001f f9400669 aa1b03ea 3840152b '
+         '3840150c 6b0c017f', 0),
     # the page name's '/'-splitting step (its load of the name at +0x8, tools/patches.py _debug_menu_path_guard):
     # the empty-name path it already takes (return true, page 0) is the right answer for a name that isn't there.
     Site('debug_menu_path_guard', 'code', 'f9400448 aa0103f3 39400108 34000008/ff00001f f9400048 aa0203e0 '
@@ -351,7 +357,7 @@ OPTIONAL_GROUPS = [
                                    # machine where the game leaves the debug cursor's pool slot empty faults on the
                                    # pool object's vtable before the first frame — and past that guard, on the
                                    # pane the skipped setup never made)
-    ('debug_menu_key_guard', 'debug_menu_len_guard', 'debug_menu_page_guard',
+    ('debug_menu_key_guard', 'debug_menu_len_guard', 'debug_menu_page_guard', 'debug_menu_cand_guard',
      'debug_menu_path_guard', 'debug_menu_hash_guard'),  # (one step past the cursor: the debug menu's page/item
                                    # functions, all entered through their vtable, look a page up by its key's
                                    # name — 0 where the menu's init left it empty; every dereference of that
@@ -528,6 +534,7 @@ KNOWN = {
         'debug_menu_key_guard': 0x7000f29fac,
         'debug_menu_len_guard': 0x7000f2a190,
         'debug_menu_page_guard': 0x7000f2a1a8,
+        'debug_menu_cand_guard': 0x7000f2a19c,
         'debug_menu_path_guard': 0x7000f2a1fc,
         'debug_menu_hash_guard': 0x7000f2a4dc,
         'main_data': 0x7001b7a000,

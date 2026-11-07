@@ -404,10 +404,13 @@ NVN(nvnMemoryPoolBuilderGetMemory) { RET(G(uint64_t, A(0), 0x10)); }
 NVN(nvnMemoryPoolBuilderGetSize) { RET(G(uint64_t, A(0), 0x18)); }
 
 NVN(nvnMemoryPoolInitialize) {
+    static int poolcount;
     NvnPool *p = calloc(1, sizeof *p);
     p->storage = G(uint64_t, A(1), 0x10);
     p->size = G(uint64_t, A(1), 0x18);
-    p->flags = G(uint32_t, A(1), 8);
+    p->flags = (uint32_t)G(uint32_t, A(1), 8);
+    LOG("[nvn] pool init #%d %llx: storage %llx size %llx flags %x lr %llx\n", ++poolcount, (unsigned long long)A(0),
+        (unsigned long long)p->storage, (unsigned long long)p->size, p->flags, (unsigned long long)c->x[30]);
     SET_HOST(A(0), p);
     RET(1);
 }
@@ -418,8 +421,18 @@ NVN(nvnMemoryPoolFinalize) {
     SET_HOST(A(0), 0);
 }
 NVN(nvnMemoryPoolSetDebugLabel) { (void)c; }
-NVN(nvnMemoryPoolMap) { RET(HOST(NvnPool, A(0))->storage); }
-NVN(nvnMemoryPoolGetBufferAddress) { RET(HOST(NvnPool, A(0))->storage); }  // GPU address == CPU address
+NVN(nvnMemoryPoolMap) {
+    NvnPool *p = HOST(NvnPool, A(0));
+    LOG("[nvn] Map pool %llx: storage %llx size %llx flags %x lr %llx\n", (unsigned long long)A(0),
+        (unsigned long long)p->storage, (unsigned long long)p->size, p->flags, (unsigned long long)c->x[30]);
+    RET(p->storage);
+}
+NVN(nvnMemoryPoolGetBufferAddress) {
+    NvnPool *p = HOST(NvnPool, A(0));
+    LOG("[nvn] GetBufferAddress pool %llx -> %llx (lr %llx)\n", (unsigned long long)A(0),
+        (unsigned long long)p->storage, (unsigned long long)c->x[30]);
+    RET(p->storage);
+}  // GPU address == CPU address
 NVN(nvnMemoryPoolGetSize) { RET(HOST(NvnPool, A(0))->size); }
 NVN(nvnMemoryPoolGetFlags) { RET(HOST(NvnPool, A(0))->flags); }
 NVN(nvnMemoryPoolFlushMappedRange) {
@@ -446,10 +459,22 @@ NVN(nvnMemoryPoolMapVirtual) {
         if (i == 0) base = b;
         else if (b != base) alias = false;
     }
-    if (alias) vp->storage = base;
+    if (alias) {
+        vp->storage = base;
+        LOG("[nvn] MapVirtual pool %llx: aliased to %llx (%d requests, lr %llx)\n", (unsigned long long)A(0),
+            (unsigned long long)base, n, (unsigned long long)c->x[30]);
+    }
     static int logged;
-    if (!alias && logged++ < 8)
+    if (!alias && logged++ < 8) {
         LOG("[nvn] MapVirtual pool %llx: %d requests not one contiguous alias (not mapped)\n", (unsigned long long)A(0), n);
+        for (int i = 0; i < n && i < 16; i++) {
+            const uint64_t *q = (const uint64_t *)(rq + i * 40);
+            NvnPool *pp = q[0] ? HOST(NvnPool, q[0]) : NULL;
+            LOG("[nvn]   req %d: phys %llx (storage %llx) poff %llx voff %llx size %llx\n", i,
+                (unsigned long long)q[0], pp ? (unsigned long long)pp->storage : 0ull,
+                (unsigned long long)q[1], (unsigned long long)q[2], (unsigned long long)q[3]);
+        }
+    }
     RET(1);
 }
 

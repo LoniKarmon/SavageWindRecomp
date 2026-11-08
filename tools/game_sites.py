@@ -366,6 +366,15 @@ SITES = [
          'b942c808 52800316', 0),
     Site('debug_menu_reg_2c8f_guard', 'code', 'a9bc7bfd a9015ff8 a90257f6 a9034ff4 910003fd f9416808 '
          'aa0003f3 b4000008/ff00001f', 0),
+    # and the +0x278/0x280 vector's trio just below the range above -- run37's fault: the title's other
+    # registration step (f_700127add8) walks this vector through the same csel'd x25 null (its fill twin's count
+    # store through table+0x278 was the fault), with the same shape one slot earlier than the range above.
+    Site('debug_menu_reg_278_guard', 'code', 'a9bc7bfd a9015ff8 a90257f6 a9034ff4 910003fd aa0003f5 '
+         '9109e000 aa0203f3', 0),
+    Site('debug_menu_reg_278c_guard', 'code', 'a9bb7bfd f9000bf9 a9025ff8 a90357f6 a9044ff4 910003fd '
+         'b9427808 52800316', 0),
+    Site('debug_menu_reg_278f_guard', 'code', 'a9bc7bfd a9015ff8 a90257f6 a9034ff4 910003fd f9414008 '
+         'aa0003f3 b4000008/ff00001f', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -416,7 +425,8 @@ OPTIONAL_GROUPS = [
      'debug_menu_reg_288c_guard', 'debug_menu_reg_288f_guard', 'debug_menu_reg_2b8f_guard',
      'debug_menu_reg_298_guard', 'debug_menu_reg_298c_guard', 'debug_menu_reg_298f_guard',
      'debug_menu_reg_2a8_guard', 'debug_menu_reg_2a8c_guard', 'debug_menu_reg_2a8f_guard',
-     'debug_menu_reg_2c8_guard', 'debug_menu_reg_2c8c_guard', 'debug_menu_reg_2c8f_guard'),  # (the title's
+     'debug_menu_reg_2c8_guard', 'debug_menu_reg_2c8c_guard', 'debug_menu_reg_2c8f_guard',
+     'debug_menu_reg_278_guard', 'debug_menu_reg_278c_guard', 'debug_menu_reg_278f_guard'),  # (the title's
                                    # debug-menu entry registration and the whole sibling cluster over the table
                                    # the half-initialized menu never built: entry guards, nothing to register)
 ]
@@ -610,6 +620,9 @@ KNOWN = {
         'debug_menu_reg_2c8_guard': 0x7000ec7848,
         'debug_menu_reg_2c8c_guard': 0x7000ec78c0,
         'debug_menu_reg_2c8f_guard': 0x7000ec796c,
+        'debug_menu_reg_278_guard': 0x7000ec7320,
+        'debug_menu_reg_278c_guard': 0x7000ec7398,
+        'debug_menu_reg_278f_guard': 0x7000ec7444,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

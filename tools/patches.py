@@ -1091,6 +1091,9 @@ PATCHES = {
     'debug_menu_reg_2c8_guard': _debug_menu_reg_guard(0x40, 0x18, 0x910b2000, '+0x2c8'),
     'debug_menu_reg_2c8c_guard': _debug_menu_reg_guard(0x50, 0x18, 0xb942c808, 'copy +0x2c8'),
     'debug_menu_reg_2c8f_guard': _debug_menu_reg_guard(0x40, 0x14, 0xf9416808, 'free +0x2d0'),
+    'debug_menu_reg_278_guard': _debug_menu_reg_guard(0x40, 0x18, 0x9109e000, '+0x278'),
+    'debug_menu_reg_278c_guard': _debug_menu_reg_guard(0x50, 0x18, 0xb9427808, 'copy +0x278'),
+    'debug_menu_reg_278f_guard': _debug_menu_reg_guard(0x40, 0x14, 0xf9414008, 'free +0x280'),
 }
 
 

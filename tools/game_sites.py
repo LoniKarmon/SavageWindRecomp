@@ -605,6 +605,35 @@ SITES = [
     # same shape a fresh read buffer has.
     Site('dir_entry_accessor_guard', 'code', 'aa0003e8 52840049 78414d0a 6b09015f 54000100/ff00001f '
          'aa0003e8 78420d0a 6b09015f 54000080/ff00001f 7842cc08 6b09011f 9a9f0008 b9400500 d65f03c0', 12),
+    # run58's tag-0x2001 sibling family (tools/patches.py accessor guards 2/3): the same path's next step
+    # f_7000f07ee0 (the BFSAR open -- the dump's x6/x7 spell "DummySound.bfsar", the newest RomFS read)
+    # bl f_700007ead4 (the bl 0x7000f08114 -- the dump's lr 0x7000f08118; x0 = the handle at [x19+0x560],
+    # the dump's x0 0x72d636a230 -- the same raw handle reached through the step's own object field, its
+    # x19 0x72d6369cd0 a fresh object for this step): it probes the tag 0x2001 at
+    # the same three offsets (csel x8, x0, xzr, eq), its tail reads the value dword at +8 (the two data
+    # offsets of the fs-iterator header's three entry sizes), ldr w0, [x8, #8] -- the fault 0x8 (host
+    # f_700007ead4+4c: mov edx, DWORD PTR [rax+8], rax = 0). The sweep: its sibling leaf f_700007eb40 (tag
+    # 0x2001, tail ldr w0, [x8, #4]) is the next fault waiting -- f_700009dbf0, the very next call of the
+    # same step (bl 0x7000f0813c), starts with bl 0x700009dc18 f_700007eb40 on x20 = [object+0x2a0] = the
+    # same handle 0x72d636a230. And the callers consume the answer as an offset or size, so both guards
+    # answer the neutral 0 (last run's tag-0x2002 leaf did): f_7000f07ee0 aligns the allocation to 0x1000
+    # (size 0 answers 0x1000 bytes), f_700009dbf0's cmp answer, requested; b.ls skip answers its own mov
+    # w0, wzr (nothing read), and f_700009ecb4's add x1, x19, w0, sxtw gets the entry at offset 0 -- the
+    # shape the raw handle already is. (The six inline tag-0x2001 probe sites in the module are other
+    # functions on other objects; they will bring their own family if reached.)
+    Site('dir_entry_accessor_guard_2', 'code', 'aa0003e8 52840029 78414d0a 6b09015f 54000100/ff00001f '
+         'aa0003e8 78420d0a 6b09015f 54000080/ff00001f 7842cc08 6b09011f 9a9f0008 b9400900 d65f03c0', 12),
+    Site('dir_entry_accessor_guard_3', 'code', 'aa0003e8 52840029 78414d0a 6b09015f 54000100/ff00001f '
+         'aa0003e8 78420d0a 6b09015f 54000080/ff00001f 7842cc08 6b09011f 9a9f0008 b9400500 d65f03c0', 12),
+    # run58's other half: the family's two leaves that probe the third tag 0x2000 (cmp w9, #2, lsl #12 is
+    # the exact-equality test for it) -- f_700007eaa0 (tail ldr w0, [x8, #8], the bl 0x7000f359a0 in the
+    # step's sibling f_7000f35930 right behind f_700009dbf0) and f_700007eb0c (tail ldr w0, [x8, #4], the
+    # bl 0x700009dcf0/0x700009ecfc with its tag-0x2000 sibling f_700007eaa0) -- both would fault in turn
+    # on the same untagged handle, both get the same guard answering offset 0.
+    Site('dir_entry_accessor_guard_4', 'code', 'aa0003e8 78414d09 7140093f 54000100/ff00001f aa0003e8 '
+         '78420d09 7140093f 54000080/ff00001f 7842cc08 7140091f 9a9f0008 b9400900 d65f03c0', 11),
+    Site('dir_entry_accessor_guard_5', 'code', 'aa0003e8 78414d09 7140093f 54000100/ff00001f aa0003e8 '
+         '78420d09 7140093f 54000080/ff00001f 7842cc08 7140091f 9a9f0008 b9400500 d65f03c0', 11),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -713,11 +742,14 @@ OPTIONAL_GROUPS = [
      'subsys_entry_pick_guard'),    # the never-built init left null -- skip the first entry load and the
                                     # indexed pick to each function's own unknown-name string return, the
                                     # answer a null list already is)
-    ('dir_entry_accessor_guard',),  # (run57's fault family: the save-dir step's iterator accessor probes
-                                    # the tag 0x2002 at three handle offsets and reads the value dword
-                                    # after it -- its csel leaves 0 when no probe matches, our machine's
-                                    # never-built fs state leaves the handle untagged; answer the neutral
-                                    # 0 the callers use as an offset: entry at the buffer head)
+    ('dir_entry_accessor_guard',   # (run57's fault family: the save-dir step's iterator accessor probes
+     'dir_entry_accessor_guard_2',  #  the tag 0x2002 at three handle offsets and reads the value dword
+     'dir_entry_accessor_guard_3',  #  after it -- its csel leaves 0 when no probe matches, our machine's
+     'dir_entry_accessor_guard_4',  #  never-built fs state leaves the handle untagged; answer the neutral
+     'dir_entry_accessor_guard_5'), #  0 the callers use as an offset: entry at the buffer head. run58
+                                    #  extended the family to its four untagged-handle siblings: the tag
+                                    #  0x2001 pair (tails +4/+8 -- the run58 fault) and the tag 0x2000
+                                    #  pair (tails +4/+8), all answering the same neutral offset 0)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -937,6 +969,10 @@ KNOWN = {
         'subsys_entry_name_guard': 0x700126b924,
         'subsys_entry_pick_guard': 0x7000ffc444,
         'dir_entry_accessor_guard': 0x700007eba8,
+        'dir_entry_accessor_guard_2': 0x700007eb04,
+        'dir_entry_accessor_guard_3': 0x700007eb70,
+        'dir_entry_accessor_guard_4': 0x700007eacc,
+        'dir_entry_accessor_guard_5': 0x700007eb38,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

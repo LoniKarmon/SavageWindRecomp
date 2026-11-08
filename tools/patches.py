@@ -1431,6 +1431,47 @@ def _dir_entry_accessor_guard(gen, a):
             f'  /* {a:#x}: ldr w0, [x8, #4] (dir iterator: untagged handle, guarded to offset 0) */')
 
 
+# The family's four untagged-handle siblings (game_sites.py's accessor guards 2-5): the same leaf shape
+# probed through the two other header tags -- 0x2001 (mov w9, #0x2001, tails +4 / +8) and 0x2000 (the
+# cmp w9, #2, lsl #12 exact test, tails +4 / +8) -- all with the same csel x8, x0, xzr, eq leaving 0 on
+# the untagged handle and the same tail value read as the leaf's only other dereference. run58's fault
+# was the 0x2001/+8 leaf (host f_700007ead4+4c: mov edx, DWORD PTR [rax+8], rax = 0); the other three
+# would fault in turn on the same handle (the step's own next call f_700009dbf0 starts with the 0x2001
+# leaf's +4 sibling bl, and its sibling f_700009ecb4 reads the 0x2000 pair). All four answer the same
+# neutral offset 0 the callers add onto the entry buffer base (entry at the buffer head) or compare as a
+# size (0 <= requested takes the guest's own nothing-read answer path).
+def _dir_entry_accessor_guard_2(gen, a):
+    assert _word(gen, a) == 0xb9400900, hex(_word(gen, a))  # ldr w0, [x8, #8] (the fault, run58's)
+    assert _word(gen, a - 4) == 0x9a9f0008, hex(_word(gen, a - 4))  # csel x8, x0, xzr, eq (0 when untagged)
+    return ('{ if (x8) { uint64_t ea = x8 + 0x8ull; uint64_t v = LD32(ea); x0 = (uint64_t)(v); }'
+            ' else { x0 = 0ull; } }'
+            f'  /* {a:#x}: ldr w0, [x8, #8] (dir iterator 2: untagged handle, guarded to offset 0) */')
+
+
+def _dir_entry_accessor_guard_3(gen, a):
+    assert _word(gen, a) == 0xb9400500, hex(_word(gen, a))  # ldr w0, [x8, #4] (the next fault)
+    assert _word(gen, a - 4) == 0x9a9f0008, hex(_word(gen, a - 4))  # csel x8, x0, xzr, eq (0 when untagged)
+    return ('{ if (x8) { uint64_t ea = x8 + 0x4ull; uint64_t v = LD32(ea); x0 = (uint64_t)(v); }'
+            ' else { x0 = 0ull; } }'
+            f'  /* {a:#x}: ldr w0, [x8, #4] (dir iterator 3: untagged handle, guarded to offset 0) */')
+
+
+def _dir_entry_accessor_guard_4(gen, a):
+    assert _word(gen, a) == 0xb9400900, hex(_word(gen, a))  # ldr w0, [x8, #8] (the third-tag sibling)
+    assert _word(gen, a - 4) == 0x9a9f0008, hex(_word(gen, a - 4))  # csel x8, x0, xzr, eq (0 when untagged)
+    return ('{ if (x8) { uint64_t ea = x8 + 0x8ull; uint64_t v = LD32(ea); x0 = (uint64_t)(v); }'
+            ' else { x0 = 0ull; } }'
+            f'  /* {a:#x}: ldr w0, [x8, #8] (dir iterator 4: untagged handle, guarded to offset 0) */')
+
+
+def _dir_entry_accessor_guard_5(gen, a):
+    assert _word(gen, a) == 0xb9400500, hex(_word(gen, a))  # ldr w0, [x8, #4] (the third-tag sibling)
+    assert _word(gen, a - 4) == 0x9a9f0008, hex(_word(gen, a - 4))  # csel x8, x0, xzr, eq (0 when untagged)
+    return ('{ if (x8) { uint64_t ea = x8 + 0x4ull; uint64_t v = LD32(ea); x0 = (uint64_t)(v); }'
+            ' else { x0 = 0ull; } }'
+            f'  /* {a:#x}: ldr w0, [x8, #4] (dir iterator 5: untagged handle, guarded to offset 0) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1569,6 +1610,10 @@ PATCHES = {
     'subsys_entry_name_guard': _subsys_entry_name_guard,
     'subsys_entry_pick_guard': _subsys_entry_pick_guard,
     'dir_entry_accessor_guard': _dir_entry_accessor_guard,
+    'dir_entry_accessor_guard_2': _dir_entry_accessor_guard_2,
+    'dir_entry_accessor_guard_3': _dir_entry_accessor_guard_3,
+    'dir_entry_accessor_guard_4': _dir_entry_accessor_guard_4,
+    'dir_entry_accessor_guard_5': _dir_entry_accessor_guard_5,
 }
 
 

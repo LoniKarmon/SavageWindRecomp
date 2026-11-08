@@ -1023,6 +1023,24 @@ def _light_rig_flag_guard(gen, a):
             f'  /* {a:#x}: ldrb w8, [x0, #0x48] (param builder: light-rig entry flag, guarded) */')
 
 
+# The param-object constructors' context list (game_sites.py param_ctor_ctx_guard, tools/patches.py): run41's fault —
+# with the light-rig loop skipped, the builder f_7000fb2804 reached its param-object tail and faulted at 0x98, lr
+# 0x7000ff6798: the three param objects go to their constructors with x3 = the actor context -- the builder's own x3,
+# held through as x19 -- and f_7000ff64dc registers its object by reading the context's entry list at [x19+0x98]
+# (count/capacity ldp, slot store at +0xa0, count bump): a null context faults dereferencing 0x98. Same root as the
+# uinj record above: the title context this machine's init never built. The constructor's own fields are real (x20 =
+# x0, the built param block on the builder's stack), and its shared tail f_7000ff6928 -- entered only from
+# f_7000ff64dc's own record loop (count 0: never runs here) -- pushes through the same x19 window, so one entry guard
+# on x3 covers the family; the sweep of the builder's other calls found no further context derefs. Registration is
+# the constructors' whole job (and the builder ignores their returns), so with no list to register in, returning
+# without building is exactly what a context-less actor means.
+def _param_ctor_ctx_guard(gen, a):
+    assert _word(gen, a) == 0xd10183ff, hex(_word(gen, a))  # sub sp, sp, #0x60 (the frame, pins the entry)
+    assert _word(gen, a + 0x1c) == 0x29406037, hex(_word(gen, a + 0x1c))  # ldp w23, w24, [x1] (the block words)
+    return ('{ if (!c->x[3]) return; }'
+            f'  /* {a:#x}: sub sp, sp, #0x60 (param object ctor: context list, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1138,6 +1156,7 @@ PATCHES = {
     'debug_menu_reg_278f_guard': _debug_menu_reg_guard(0x40, 0x14, 0xf9414008, 'free +0x280'),
     'uinj_db_guard': _uinj_db_guard,
     'light_rig_flag_guard': _light_rig_flag_guard,
+    'param_ctor_ctx_guard': _param_ctor_ctx_guard,
 }
 
 

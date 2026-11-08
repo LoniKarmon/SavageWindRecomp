@@ -390,6 +390,19 @@ SITES = [
     # Guard the read on that: a base below 4 GiB (any real back-pointer is a heap pointer) skips the entry, which
     # is exactly what a record whose set was never built means. The helper's only call site; at: 1 pins the ldrb.
     Site('light_rig_flag_guard', 'code', '9400fefb 39412008 34000008/ff00001f', 1),
+    # run41's param-object crash (tools/patches.py param_ctor_ctx_guard): the builder's tail hands its three param
+    # objects to their constructors with x3 = the actor context (the builder's own x3, null here -- the same
+    # never-built title context that emptied the uinj record above, its list head at +0x98 living on the context
+    # object). f_7000ff64dc -- the run41 fault's home, lr 0x7000ff6798 -- keeps x3 as x19 and reads its entry array
+    # to register the object: ldp w8, w9, [x19, #0x98] (count/capacity, then the slot store and the count bump)
+    # faults dereferencing 0x98. Its own fields (x20 = x0, the built param block) are real, and f_7000ff6928 -- the
+    # two sibling constructors' shared tail, called from f_7000ff64dc's own record loop (and nothing else) --
+    # pushes through the same x19+0x98..0xa0 window: one entry guard on x3 covers the family. A sweep of the other
+    # builder calls found no further context derefs (f_7000fe32a8's x20 reads the real stack block; f_70010133f4
+    # stores). With no context there is no list to register in: the constructors' whole job is that registration,
+    # so returning without building is exactly what a context-less actor means.
+    Site('param_ctor_ctx_guard', 'code', 'd10183ff a9017bfd f90013f9 a9035ff8 a90457f6 a9054ff4 910043fd '
+         '29406037', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -448,6 +461,9 @@ OPTIONAL_GROUPS = [
                                    # title init never built: guard the member load, hand out a zeroed default record)
     ('light_rig_flag_guard',),  # (run40's fault: the zeroed record's null light-rig back-pointer leaves the param
                                    # builder's entry loop on an unmapped 0x53658 base -- skip the entries it lacks)
+    ('param_ctor_ctx_guard',),  # (run41's fault: the param-object constructors register their objects into the
+                                   # actor context's entry list -- with the context never built, x3 is null: skip
+                                   # the construction, its only purpose was the registration into that list)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -644,6 +660,7 @@ KNOWN = {
         'debug_menu_reg_278f_guard': 0x7000ec7444,
         'uinj_db_guard': 0x7000f9e5ec,
         'light_rig_flag_guard': 0x7000fb313c,
+        'param_ctor_ctx_guard': 0x7000ff64dc,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

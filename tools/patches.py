@@ -1131,6 +1131,51 @@ def _gfx_system_list_guard(gen, a):
             f'  /* {a:#x}: ldr w9, [x21, x9] (gfx::System notify: actor list, guarded) */')
 
 
+# The actor init's subsystem-field tail (game_sites.py's four actor_*_guard sites, tools/patches.py): run48's
+# fault -- the title actor init f_7001263218, past the family 13-15 guards, registers its subsystems through the
+# fields of its subsystem block x20 (real) and the never-built title init left those fields 0 like the fields
+# before them. The fault, 0x100 exactly: the notify step's return path at 0x7001263c9c stores the vtable
+# descriptor adr through field [x20+0x5cd8] (str x9, [x8, #0x100], x8 0 in the dump; host pc f_7001263218+0x1b76
+# is mov QWORD PTR [rax+0x100],rcx right after the call at 0x7001263c84, rax = [[rbx+0xa0]+0x5cd8]) -- guard it
+# as a conditional store, the descriptor simply goes nowhere. The sweep of the rest of the tail found the two
+# registry lookups (0x70012641b0/0x70012641f0): both load field [x20+0x55e8] into x21 and hand it to the
+# registry lookup f_7000f778dc, which reads the entry count at [x0+0x38] and the array at [x0+0x40] through it
+# -- a null field would fault at 0x38 there -- and each lookup's own not-found result (-1) reaches the guest
+# label 0x70012642d8/0x70012642e0 storing 0 through [x19+0x10f8]/[x19+0x1100], so a null field jumps to that
+# existing label (the entry read at [x21+0x40] after the bl is skipped with the call). The last chain, the
+# consumer at 0x7001264228: it loads field [x20+0x55f0] into x0, stores the same value through [x19+0x1108]
+# (the same null, and the actor block is a fresh allocation), and calls vtable slot +0xc0 for the flag byte at
+# [x19+0x11b8] -- null has no vtable, so jump to the function tail at 0x700126428c: the entry loop it passes
+# over is gated on the param count [x20+0x108] the guarded ctor left 0 (its own cbz skips it on this machine
+# anyway), and the tail only stores static function tables through the real block x20 before the epilogue.
+def _actor_reg_field_guard(gen, a):
+    assert _word(gen, a) == 0xf9008109, hex(_word(gen, a))  # str x9, [x8, #0x100] (the fault, x8 = the field)
+    assert _word(gen, a - 0x14) == 0xf96e6e88, hex(_word(gen, a - 0x14))  # ldr x8, [x20, #0x5cd8] (the field)
+    return ('{ if (x8) { uint64_t ea = x8 + 0x100ull; ST64(ea, x9); } }'
+            f'  /* {a:#x}: str x9, [x8, #0x100] (actor init: subsystem vtable store, guarded) */')
+
+
+def _actor_list_reg_guard_1(gen, a):
+    assert _word(gen, a) == 0xf96af695, hex(_word(gen, a))  # ldr x21, [x20, #0x55e8] (the field)
+    assert _word(gen, a - 8) == 0xf9451660, hex(_word(gen, a - 8))  # ldr x0, [x19, #0xa28] (the notify link)
+    return ('{ c->x[21] = LD64(c->x[20] + 0x55e8ull); if (!c->x[21]) goto L_70012642d8; }'
+            f'  /* {a:#x}: ldr x21, [x20, #0x55e8] (actor init: registry field, guarded) */')
+
+
+def _actor_list_reg_guard_2(gen, a):
+    assert _word(gen, a) == 0xf96af695, hex(_word(gen, a))  # ldr x21, [x20, #0x55e8] (the field)
+    assert _word(gen, a - 0xc) == 0xf9087e68, hex(_word(gen, a - 0xc))  # str x8, [x19, #0x10f8] (first result)
+    return ('{ c->x[21] = LD64(c->x[20] + 0x55e8ull); if (!c->x[21]) goto L_70012642e0; }'
+            f'  /* {a:#x}: ldr x21, [x20, #0x55e8] (actor init: registry field again, guarded) */')
+
+
+def _actor_subsys_ref_guard(gen, a):
+    assert _word(gen, a) == 0xf96afa80, hex(_word(gen, a))  # ldr x0, [x20, #0x55f0] (the field)
+    assert _word(gen, a - 0xc) == 0x91004368, hex(_word(gen, a - 0xc))  # add x8, x27, #0x10 (the descriptor)
+    return ('{ x0 = LD64(c->x[20] + 0x55f0ull); if (!x0) goto L_700126428c; }'
+            f'  /* {a:#x}: ldr x0, [x20, #0x55f0] (actor init: subsystem ref field, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1251,6 +1296,10 @@ PATCHES = {
     'param_list_xfer_guard': _param_list_xfer_guard,
     'param_subsys_guard': _param_subsys_guard,
     'gfx_system_list_guard': _gfx_system_list_guard,
+    'actor_reg_field_guard': _actor_reg_field_guard,
+    'actor_list_reg_guard_1': _actor_list_reg_guard_1,
+    'actor_list_reg_guard_2': _actor_list_reg_guard_2,
+    'actor_subsys_ref_guard': _actor_subsys_ref_guard,
 }
 
 

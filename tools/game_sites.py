@@ -445,6 +445,22 @@ SITES = [
     # list. The busy-lock branch above already skips everyone through the function's own return label, so jump
     # there: the blr's caller ignores the result (mov x0, x19 on its very next instruction).
     Site('gfx_system_list_guard', 'code', 'f945fd08 b8696aa9 f96b0eaa', 1),
+    # run48's actor-init tail crash family (tools/patches.py actor_subsys_tail_guards, four sites): the actor's
+    # subsystem fields carry the tail of the title actor init f_7001263218, and the never-built title init left
+    # them 0 like the vector, the context, the subsystem and the gfx list before them. (1) 0x7001263c9c is the
+    # fault: the notify step's return path registers the vtable through field [x20+0x5cd8] -- str x9, [x8, #0x100]
+    # -- faulting at 0x100 with x8 0 (host f_7001263218+0x1b76: mov [rax+0x100],rcx right after the
+    # f_7000f7658c call, rax = [rax+0x5cd8]). (2)+(3) the two registry lookups load through field [x20+0x55e8]
+    # into x21 and hand it to f_7000f778dc, which reads [x0+0x38]/[x0+0x40] through it -- a null field would
+    # fault there; the guest's own not-found branches (result -1) reach 0x70012642d8/0x70012642e0 and store 0
+    # through [x19+0x10f8]/[x19+0x1100], so skip there on null. (4) the consumer loads field [x20+0x55f0] into
+    # x0, stores it through [x19+0x1108] (the same null), and calls vtable slot +0xc0 for a flag byte: null has
+    # no vtable, so skip to the function tail the guest's own count==0 branch (the param vector the guarded ctor
+    # left empty) already reaches.
+    Site('actor_reg_field_guard', 'code', 'f96e6e88 d503201f 10006209 52801400 aa1c03e1 f9008109', 5),
+    Site('actor_list_reg_guard_1', 'code', 'f9451660 97ff4ed5/94000000 f96af695', 2),
+    Site('actor_list_reg_guard_2', 'code', 'f9087e68 f0001d08/9f00001f 910da108/ffc003ff f96af695', 3),
+    Site('actor_subsys_ref_guard', 'code', '91004368 90001fa9/9f00001f 910ca129/ffc003ff f96afa80', 3),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -518,6 +534,11 @@ OPTIONAL_GROUPS = [
     ('gfx_system_list_guard',),  # (run47's fault: the gfx::System notify reads its actor-list count through the
                                     # base the never-built init left 0 -- skip the notify on null, the guest's
                                     # own busy-lock return label where nobody is notified)
+    ('actor_reg_field_guard',  # (run48's fault family: the actor init's tail writes/looks through the subsystem
+     'actor_list_reg_guard_1',   # fields the never-built init left 0 -- the vtable registration through
+     'actor_list_reg_guard_2',   # [x20+0x5cd8] (the fault at 0x100), the two registry lookups through
+     'actor_subsys_ref_guard'),  # [x20+0x55e8] (their guest -1 branches skip the entry read), and the vtable
+                                 # consumer through [x20+0x55f0] (skip to its after-call merge)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -719,6 +740,10 @@ KNOWN = {
         'param_list_xfer_guard': 0x7000ffb320,
         'param_subsys_guard': 0x70012635d0,
         'gfx_system_list_guard': 0x700123b938,
+        'actor_reg_field_guard': 0x7001263c9c,
+        'actor_list_reg_guard_1': 0x70012641b0,
+        'actor_list_reg_guard_2': 0x70012641f0,
+        'actor_subsys_ref_guard': 0x7001264228,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

@@ -461,6 +461,18 @@ SITES = [
     Site('actor_list_reg_guard_1', 'code', 'f9451660 97ff4ed5/94000000 f96af695', 2),
     Site('actor_list_reg_guard_2', 'code', 'f9087e68 f0001d08/9f00001f 910da108/ffc003ff f96af695', 3),
     Site('actor_subsys_ref_guard', 'code', '91004368 90001fa9/9f00001f 910ca129/ffc003ff f96afa80', 3),
+    # run49's subsystem-consumer crash (tools/patches.py subsys_consume_guard): the actor init's tail hands the
+    # allocator's subsystem block plus the stack descriptor (sp + 0x58) to the subsystem consumer f_700126daf0
+    # (bl 0x7001263f00); the descriptor's getter result at [x1+8] is f_7001016510's null-guarded answer for the
+    # field [x20+0x51d8] the never-built title init left 0 -- the getter returns 0 (its cmp/csel is null-safe),
+    # and the consumer reads the flag word through it: ldr w21, [x8, #0x298] faulted at 0x298 exactly (x8 0 in
+    # the dump; host pc f_700126daf0+0xde). The sweep of the consumer's body: the same value's copy at
+    # [x20+0x10] is read again at [x8+0x2b4] (same null), every other dereference goes through the real
+    # allocation (x20 = x0) or the real descriptor ([x19] = [sp+0x58] = x28), and the getter value's other home
+    # -- the stack slot [sp+0x60] -- is never read again. So return from the entry: the sole caller ignores the
+    # result (mov w0, #0x6c0 on its very next instruction) and the subsystem simply registers nothing.
+    Site('subsys_consume_guard', 'code', 'd10383ff a9097bfd a90a67fa a90b5ff8 a90c57f6 a90d4ff4 '
+         '910243fd f9400428', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -539,6 +551,9 @@ OPTIONAL_GROUPS = [
      'actor_list_reg_guard_2',   # [x20+0x5cd8] (the fault at 0x100), the two registry lookups through
      'actor_subsys_ref_guard'),  # [x20+0x55e8] (their guest -1 branches skip the entry read), and the vtable
                                  # consumer through [x20+0x55f0] (skip to its after-call merge)
+    ('subsys_consume_guard',),  # (run49's fault: the subsystem consumer reads its flag word through the null
+                                 # getter result for the never-built field [x20+0x51d8] -- return from its
+                                 # entry, its caller ignores the result, nothing gets registered)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -744,6 +759,7 @@ KNOWN = {
         'actor_list_reg_guard_1': 0x70012641b0,
         'actor_list_reg_guard_2': 0x70012641f0,
         'actor_subsys_ref_guard': 0x7001264228,
+        'subsys_consume_guard': 0x700126daf0,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

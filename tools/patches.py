@@ -1176,6 +1176,28 @@ def _actor_subsys_ref_guard(gen, a):
             f'  /* {a:#x}: ldr x0, [x20, #0x55f0] (actor init: subsystem ref field, guarded) */')
 
 
+# The subsystem consumer's null getter result (game_sites.py subsys_consume_guard, tools/patches.py): run49's
+# fault -- the actor init's tail hands the allocator's subsystem block (x24) plus the stack descriptor (x1 = sp
+# + 0x58) to the subsystem consumer f_700126daf0 (bl 0x7001263f00). The descriptor's [x1+8] holds the getter
+# result: the caller built it with the null-safe getter f_7001016510 (its head is ldr x8,[x0,#0x420]; cmp/csel
+# -- and its subject is the field [x20_actor+0x51d8] the never-built title init left 0, so the getter answers
+# 0), and the consumer reads the subsystem's flag word through it: ldr w21, [x8, #0x298] faulted at 0x298
+# exactly, x8 0 in the dump (host pc f_700126daf0+0xde is the mov esi,[rbp+0x298]-style read right after the
+# field copy, mov eax,[rdi+0x8]). The sweep of the consumer's body: the same value's copy at [x20+0x10] is
+# read again at ldr w4, [x8, #0x2b4] (the same null, one bl later), every other dereference goes through the
+# real allocation (x20 = x0, x22 = the f_7000e8c250 result) or the real descriptor ([x19] = [sp+0x58] = the
+# actor's real x28), and the getter value's other home -- the caller's stack slot [sp+0x60] -- is never read
+# again. So one entry guard on the null getter returns from the consumer: the sole caller ignores the result
+# (mov w0, #0x6c0 on its very next instruction) and the subsystem block stays exactly as the allocator left
+# it -- an absent subsystem has nothing to register.
+def _subsys_consume_guard(gen, a):
+    assert _word(gen, a) == 0xd10383ff, hex(_word(gen, a))  # sub sp, sp, #0xe0 (the frame, pins the entry)
+    assert _word(gen, a + 0x1c) == 0xf9400428, hex(_word(gen, a + 0x1c))  # ldr x8, [x1, #8] (the getter result)
+    assert _word(gen, a + 0x40) == 0xb9429915, hex(_word(gen, a + 0x40))  # ldr w21, [x8, #0x298] (the fault)
+    return ('{ if (!LD64(c->x[1] + 8ull)) return; }'
+            f'  /* {a:#x}: sub sp, sp, #0xe0 (subsystem consumer: null getter result, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1300,6 +1322,7 @@ PATCHES = {
     'actor_list_reg_guard_1': _actor_list_reg_guard_1,
     'actor_list_reg_guard_2': _actor_list_reg_guard_2,
     'actor_subsys_ref_guard': _actor_subsys_ref_guard,
+    'subsys_consume_guard': _subsys_consume_guard,
 }
 
 

@@ -576,6 +576,19 @@ SITES = [
          '913ce108 b940180a f9400108 79c00109 f9401008 6b09015f 1a9f8129 8b29c90a 7940054a', 0),
     Site('subsys_index_get_guard_3', 'code', 'a9be7bfd f9000bf3 910003fd 37f803a1/fff8001f 90007428 '
          '912c0108 b940180a f9400108 79c00109 f9401008 6b09015f 1a9f8129 8b29c90a 7940054a', 0),
+    # run56's subsystem list family (tools/patches.py entry-name/pick guards, two sites): the init step's
+    # last lookups f_700126b908 (the frame lr 0x7001264754; x0 = the real actor block at 0x72d523a6e8) read
+    # a subsystem entry through its list base, three dereferences down: ldr x8, [x0, #0x158] (the dump's x0
+    # -> real) and ldr x8, [x8] then the list field ldr x8, [x8, #0x5c80] -- the never-built title init left
+    # it null -- and its first use faults: ldr x0, [x8], the fault 0x0 (host f_700126b908+65: mov rcx, QWORD
+    # PTR [rax]). Both consumers' own absent paths return the module's unknown-name string (0x70015e615b) --
+    # A right after the entry get's cbz x0 (its label L_700126b95c), B as its default case (L_7000ffc44c) --
+    # so a null list base answers through each function's own string return: A's guard skips the load and
+    # the whole found-entry virtual chain to that label, B's the entry-array indexed load. The sweep of all
+    # 0x5c80 dereferences in the module found exactly these two consumers (plus B's count field 0x5c78 read,
+    # a sibling load through the same real base -- it answers 0 and the guest's own cbz paths follow).
+    Site('subsys_entry_name_guard', 'code', 'f940ac08 2a1f03e1 f9400108 f96e4108 f9400100', 4),
+    Site('subsys_entry_pick_guard', 'code', '6b02013f 540000e9/ff00001f f96e4108 f862d913', 3),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -680,6 +693,10 @@ OPTIONAL_GROUPS = [
      'subsys_index_get_guard_2',    # their bound pair through the same null table base [x0+0x20] and their
      'subsys_index_get_guard_3'),   # entries through the null [x0+0x30] -- answer the guest's own null
                                     # entry from each entry, the callers' cbnz/cbz/csel handle it)
+    ('subsys_entry_name_guard',    # (run56's fault family: the last entry lookups' list field [x+0x5c80]
+     'subsys_entry_pick_guard'),    # the never-built init left null -- skip the first entry load and the
+                                    # indexed pick to each function's own unknown-name string return, the
+                                    # answer a null list already is)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -896,6 +913,8 @@ KNOWN = {
         'subsys_index_get_guard_1': 0x7000fb42f8,
         'subsys_index_get_guard_2': 0x7000fb44b4,
         'subsys_index_get_guard_3': 0x7000fb45dc,
+        'subsys_entry_name_guard': 0x700126b924,
+        'subsys_entry_pick_guard': 0x7000ffc444,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

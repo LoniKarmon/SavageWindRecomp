@@ -1374,6 +1374,39 @@ def _subsys_index_get_guard_3(gen, a):
             f'  /* {a:#x}: stp x29, x30, [sp, #-0x20]! (indexed getEntry 3: null table, guarded) */')
 
 
+# The subsystem list's null base (game_sites.py's two entry-name/pick sites, tools/patches.py): run56's
+# fault -- the init step f_7001264644 got past all five indexed fallbacks (run55's family, their null
+# answers stored into [x19+0x118..0x140]) and its last lookup f_700126b908 (the bl 0x7001264750 -- the
+# dump's lr 0x7001264754; x0 = the real actor block 0x72d523a6e8) reads a subsystem entry through its list
+# base three dereferences down: ldr x8, [x0, #0x158] (the dump's x8 0x72d5242958 -- real) and ldr x8, [x8]
+# then the list field ldr x8, [x8, #0x5c80] -- the never-built title init left null (the host mov rax,
+# [rax+0x5c80] reads it fine) -- and the first use faults: ldr x0, [x8], the fault 0x0 (host
+# f_700126b908+65: mov rcx, QWORD PTR [rax]). The sweep of every #0x5c80 dereference in the whole module
+# found exactly two consumers, and both already carry their own absent answer: A right after the entry
+# get's cbz x0 jumps to its unknown-name string return (0x70015e615b, its label L_700126b95c), B -- the
+# per-kind entry picker f_7000ffc3dc, the next fault waiting, its ldr x19, [x8, w2, sxtw #3] through the
+# same null base -- answers the same string from its default case (label L_7000ffc44c; its w1==2 path's
+# count sibling field 0x5c78 is a load through the same real base, answers 0, and the guest's own b.ls
+# then takes its x19-null path). So each guard skips just the load through the null list base to its own
+# function's string return -- the answer a never-built list already is: no entry, the unknown name.
+def _subsys_entry_name_guard(gen, a):
+    assert _word(gen, a) == 0xf9400100, hex(_word(gen, a))  # ldr x0, [x8] (the fault, x8 = the list base)
+    assert _word(gen, a - 0x10) == 0xf940ac08, hex(_word(gen, a - 0x10))  # ldr x8, [x0, #0x158] (chain head)
+    assert _word(gen, a - 4) == 0xf96e4108, hex(_word(gen, a - 4))  # ldr x8, [x8, #0x5c80] (the field)
+    return ('{ if (!x8) goto L_700126b95c; x0 = LD64(x8); }'
+            f'  /* {a:#x}: ldr x0, [x8] (subsystem list base: null, guarded to the unknown-name string) */')
+
+
+def _subsys_entry_pick_guard(gen, a):
+    assert _word(gen, a) == 0xf862d913, hex(_word(gen, a))  # ldr x19, [x8, w2, sxtw #3] (the next fault)
+    assert _word(gen, a - 4) == 0xf96e4108, hex(_word(gen, a - 4))  # ldr x8, [x8, #0x5c80] (the field)
+    assert _word(gen, a - 8) == 0x540000e9, hex(_word(gen, a - 8))  # b.ls #0x7000ffc458 (the count skip)
+    return ('{ if (!x8) goto L_7000ffc44c;'
+            ' uint64_t ea = x8 + ((uint64_t)(int64_t)(int32_t)x2 << 3);'
+            ' uint64_t v = LD64(ea); x19 = (uint64_t)(v); }'
+            f'  /* {a:#x}: ldr x19, [x8, w2, sxtw #3] (subsystem list base: null, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1509,6 +1542,8 @@ PATCHES = {
     'subsys_index_get_guard_1': _subsys_index_get_guard_1,
     'subsys_index_get_guard_2': _subsys_index_get_guard_2,
     'subsys_index_get_guard_3': _subsys_index_get_guard_3,
+    'subsys_entry_name_guard': _subsys_entry_name_guard,
+    'subsys_entry_pick_guard': _subsys_entry_pick_guard,
 }
 
 

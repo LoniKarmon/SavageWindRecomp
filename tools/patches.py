@@ -986,14 +986,19 @@ def _debug_menu_reg_guard(frame, pin_off, pin_word, vec):
 # uinj actor database: it loads the scene world's +0x28 member, adds a fixed 0x4e0, and tail-branches (b, not bl) to
 # f_7000ff3520, whose first load reads the record count through base+0x54158. On this machine the never-completed
 # title init never built that member, so it loads null, the add leaves the base at 0x4e0, and the count load faults
-# dereferencing 0x4e0+0x54158 = 0x54638. Guard the member load: with no database return the null straight from the
-# thunk (skipping the tail branch), and the caller -- which only stores the result, never dereferences it (its own
-# constructor path keeps it as the actor's name slot, written, not read) -- carries the null harmlessly. The guard
-# refreshes x8 so the add's fall-through keeps the real database's base intact.
+# dereferencing 0x4e0+0x54158 = 0x54638. run39's follow-up — fault 0x70, inside libnvn's memcpy — showed the result
+# is not just stored: the ctor keeps it as the actor's uinj record at actor+0x138 and the param builder f_7000fb2804
+# reads it back, the 0x204-byte actor name at +0x70 (that memcpy), the field at +0x274 and the override flags at
+# +0xb28/+0xe88 -- reads only, no writes. So hand out a zeroed default record instead of the null: a zero padding
+# run in main's rodata (the assertions below pin its span), read as an empty name, null fields and no overrides --
+# exactly the state of an actor the never-built database never learned. The guard refreshes x8 so the add's
+# fall-through keeps a real database's base intact.
 def _uinj_db_guard(gen, a):
     assert _word(gen, a) == 0xf9401408, hex(_word(gen, a))  # ldr x8, [x0, #0x28] (the actor-db member)
     assert _word(gen, a + 4) == 0x91138100, hex(_word(gen, a + 4))  # add x0, x8, #0x4e0 (the record-array base)
-    return ('{ x8 = LD64(c->x[0] + 0x28); c->x[8] = x8; if (!x8) { c->x[0] = 0; return; } }'
+    for off in range(0, 0xe90, 0x10):  # the record's read span, pinned zero in rodata padding
+        assert _word(gen, 0x700171a380 + off) == 0, hex(0x700171a380 + off)
+    return ('{ x8 = LD64(c->x[0] + 0x28); c->x[8] = x8; if (!x8) { c->x[0] = 0x700171a380ull; return; } }'
             f'  /* {a:#x}: ldr x8, [x0, #0x28] (actor create: uinj db member, guarded) */')
 
 

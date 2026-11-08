@@ -375,13 +375,13 @@ SITES = [
          'b9427808 52800316', 0),
     Site('debug_menu_reg_278f_guard', 'code', 'a9bc7bfd a9015ff8 a90257f6 a9034ff4 910003fd f9414008 '
          'aa0003f3 b4000008/ff00001f', 0),
-    # run38's actor-create crash (tools/patches.py uinj_db_guard): the title's actor creation asks the thunk at
-    # f_7000f9e5ec for the uinj actor database -- the scene world's +0x28 member plus a fixed 0x4e0 offset -- and
-    # that member is empty (its build never ran, the same half-initialized title as the debug menu above); the
-    # target f_7000ff3520's first load, the record count at [db+0x54158], faults dereferencing 0x4e0+0x54158 =
-    # 0x54638. Guard the member load: with no database return null -- the caller's only uses of the result are
-    # the constructor's stores (the name slot keeps it, nothing dereferences it), so the actor is created with
-    # the guest's own zero-initialized name fields.
+    # run38/run39's actor-create crash (tools/patches.py uinj_db_guard): the title's actor creation asks the thunk at
+    # f_7000f9e5ec for the uinj actor database -- the scene world's +0x28 member plus a fixed 0x4e0 offset -- and that
+    # member is empty (its build never ran, the same half-initialized title as the debug menu above); the target
+    # f_7000ff3520's first load, the record count at [db+0x54158], faults dereferencing 0x4e0+0x54158 = 0x54638.
+    # Guard the member load: with no database return a zeroed default record (see patches.py) -- the caller keeps it
+    # as the actor's uinj record, which its param builder then reads: an empty name at +0x70, null fields and all
+    # override flags clear, exactly what a record for an actor the database never learned should read as.
     Site('uinj_db_guard', 'code', 'f9401408 91138100 14000000/fc000000', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),

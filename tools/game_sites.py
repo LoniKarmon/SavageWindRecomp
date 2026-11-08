@@ -336,6 +336,36 @@ SITES = [
          '910ae000 aa0203f3', 0),
     Site('debug_menu_reg_copy_guard', 'code', 'a9bb7bfd f9000bf9 a9025ff8 a90357f6 a9044ff4 910003fd '
          'b942b808 52800316', 0),
+    # the whole registration cluster past those four (the sweep of the title's registration function f_70012567bc
+    # and of the f_7000ec74d8..f_7000ec7cd8 range, tools/patches.py _debug_menu_reg_guard): the +0x288 copy
+    # variant faults at run36 (its 55 calls take the same csel'd x25 table), and the cluster carries the rest of
+    # the table's vectors -- the +0x298/+0x2a8/+0x2c8 vectors' wrappers, copy variants, and each vector's
+    # free/reset (its data pointer at vec+8 then a cbz) -- all taking this table, all faulting inside their first
+    # two instructions with a null one. Same entry guard, so no later boot step relearns this the hard way.
+    Site('debug_menu_reg_288c_guard', 'code', 'a9bb7bfd f9000bf9 a9025ff8 a90357f6 a9044ff4 910003fd '
+         'b9428808 52800316', 0),
+    Site('debug_menu_reg_288f_guard', 'code', 'a9bc7bfd a9015ff8 a90257f6 a9034ff4 910003fd f9414808 '
+         'aa0003f3 b4000008/ff00001f', 0),
+    Site('debug_menu_reg_2b8f_guard', 'code', 'a9bc7bfd a9015ff8 a90257f6 a9034ff4 910003fd f9416008 '
+         'aa0003f3 b4000008/ff00001f', 0),
+    Site('debug_menu_reg_298_guard', 'code', 'a9bc7bfd a9015ff8 a90257f6 a9034ff4 910003fd aa0003f5 '
+         '910a6000 aa0203f3', 0),
+    Site('debug_menu_reg_298c_guard', 'code', 'a9bb7bfd f9000bf9 a9025ff8 a90357f6 a9044ff4 910003fd '
+         'b9429808 52800316', 0),
+    Site('debug_menu_reg_298f_guard', 'code', 'a9bc7bfd a9015ff8 a90257f6 a9034ff4 910003fd f9415008 '
+         'aa0003f3 b4000008/ff00001f', 0),
+    Site('debug_menu_reg_2a8_guard', 'code', 'a9bc7bfd a9015ff8 a90257f6 a9034ff4 910003fd aa0003f5 '
+         '910aa000 aa0203f3', 0),
+    Site('debug_menu_reg_2a8c_guard', 'code', 'a9bb7bfd f9000bf9 a9025ff8 a90357f6 a9044ff4 910003fd '
+         'b942a808 52800316', 0),
+    Site('debug_menu_reg_2a8f_guard', 'code', 'a9bc7bfd a9015ff8 a90257f6 a9034ff4 910003fd f9415808 '
+         'aa0003f3 b4000008/ff00001f', 0),
+    Site('debug_menu_reg_2c8_guard', 'code', 'a9bc7bfd a9015ff8 a90257f6 a9034ff4 910003fd aa0003f5 '
+         '910b2000 aa0203f3', 0),
+    Site('debug_menu_reg_2c8c_guard', 'code', 'a9bb7bfd f9000bf9 a9025ff8 a90357f6 a9044ff4 910003fd '
+         'b942c808 52800316', 0),
+    Site('debug_menu_reg_2c8f_guard', 'code', 'a9bc7bfd a9015ff8 a90257f6 a9034ff4 910003fd f9416808 '
+         'aa0003f3 b4000008/ff00001f', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -382,9 +412,13 @@ OPTIONAL_GROUPS = [
                                    # name guarded, each to its function's own empty-name path)
     ('shader_queue_guard',),  # (the title screen's first shader link, on a machine where the shader holder's
                                    # queue member stayed empty: guard its first load, its empty-queue exit runs)
-    ('debug_menu_reg_288_guard', 'debug_menu_reg_2b8_guard', 'debug_menu_reg_copy_guard'),  # (the title's debug-
-                                   # menu entry registration, on a table the half-initialized menu never built:
-                                   # entry guards on the two wrappers and the copy variant, nothing to register)
+    ('debug_menu_reg_288_guard', 'debug_menu_reg_2b8_guard', 'debug_menu_reg_copy_guard',
+     'debug_menu_reg_288c_guard', 'debug_menu_reg_288f_guard', 'debug_menu_reg_2b8f_guard',
+     'debug_menu_reg_298_guard', 'debug_menu_reg_298c_guard', 'debug_menu_reg_298f_guard',
+     'debug_menu_reg_2a8_guard', 'debug_menu_reg_2a8c_guard', 'debug_menu_reg_2a8f_guard',
+     'debug_menu_reg_2c8_guard', 'debug_menu_reg_2c8c_guard', 'debug_menu_reg_2c8f_guard'),  # (the title's
+                                   # debug-menu entry registration and the whole sibling cluster over the table
+                                   # the half-initialized menu never built: entry guards, nothing to register)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -564,6 +598,18 @@ KNOWN = {
         'debug_menu_reg_288_guard': 0x7000ec74d8,
         'debug_menu_reg_2b8_guard': 0x7000ec7690,
         'debug_menu_reg_copy_guard': 0x7000ec7708,
+        'debug_menu_reg_288c_guard': 0x7000ec7550,
+        'debug_menu_reg_288f_guard': 0x7000ec75fc,
+        'debug_menu_reg_2b8f_guard': 0x7000ec77b4,
+        'debug_menu_reg_298_guard': 0x7000ec7a00,
+        'debug_menu_reg_298c_guard': 0x7000ec7a78,
+        'debug_menu_reg_298f_guard': 0x7000ec7b24,
+        'debug_menu_reg_2a8_guard': 0x7000ec7bb8,
+        'debug_menu_reg_2a8c_guard': 0x7000ec7c30,
+        'debug_menu_reg_2a8f_guard': 0x7000ec7cdc,
+        'debug_menu_reg_2c8_guard': 0x7000ec7848,
+        'debug_menu_reg_2c8c_guard': 0x7000ec78c0,
+        'debug_menu_reg_2c8f_guard': 0x7000ec796c,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

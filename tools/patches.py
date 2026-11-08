@@ -960,6 +960,27 @@ def _debug_menu_reg_copy_guard(gen, a):
             f'  /* {a:#x}: stp x29, x30, [sp, #-0x50]! (Debug menu reg copy: table, guarded) */')
 
 
+# The rest of the registration cluster (game_sites.py debug_menu_reg_* guards): the sweep of the title's
+# registration function (f_70012567bc) and of the cluster found run36 faulting in the +0x288 vector's copy
+# variant (f_7000ec7550, called 55 more times with the same x25) — the same entry shape as f_7000ec7708 one
+# vector over — and seven siblings that take the same table the same way: the +0x298 and +0x2c8 vectors' wrappers
+# and copy variants, and each vector's free/reset (its data pointer at vec+0x8, then a cbz). All of them fault on
+# a null table within the first two instructions; the same entry guard covers every caller, the way it already
+# covers the boot's 82 calls through the four guarded entries.
+
+
+def _debug_menu_reg_guard(frame, pin_off, pin_word, vec):
+    # entry guard on the pushed-frame stp (the frame size pins the shape), pinned by the first instruction that
+    # touches the table (the vector's count, its data pointer, or the add before the fill call)
+    def patch(gen, a):
+        assert _word(gen, a) == 0xa9bc7bfd - ((frame - 0x40) << 12), hex(_word(gen, a))  # stp x29, x30, [sp]
+        assert _word(gen, a + pin_off) == pin_word, hex(_word(gen, a + pin_off))  # the first touch of the table
+        return ('{' + f' if (!c->x[0]) return; c->sp -= {frame:#x}; ST64(c->sp, c->x[29]); '
+                f'ST64(c->sp + 8, c->x[30]); ' + '}'
+                f'  /* {a:#x}: stp x29, x30, [sp, #{frame:#x}]! (Debug menu reg {vec}: table, guarded) */')
+    return patch
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1058,6 +1079,18 @@ PATCHES = {
     'debug_menu_reg_288_guard': _debug_menu_reg_288_guard,
     'debug_menu_reg_2b8_guard': _debug_menu_reg_2b8_guard,
     'debug_menu_reg_copy_guard': _debug_menu_reg_copy_guard,
+    'debug_menu_reg_288c_guard': _debug_menu_reg_guard(0x50, 0x18, 0xb9428808, 'copy +0x288'),
+    'debug_menu_reg_288f_guard': _debug_menu_reg_guard(0x40, 0x14, 0xf9414808, 'free +0x290'),
+    'debug_menu_reg_2b8f_guard': _debug_menu_reg_guard(0x40, 0x14, 0xf9416008, 'free +0x2c0'),
+    'debug_menu_reg_298_guard': _debug_menu_reg_guard(0x40, 0x18, 0x910a6000, '+0x298'),
+    'debug_menu_reg_298c_guard': _debug_menu_reg_guard(0x50, 0x18, 0xb9429808, 'copy +0x298'),
+    'debug_menu_reg_298f_guard': _debug_menu_reg_guard(0x40, 0x14, 0xf9415008, 'free +0x2a0'),
+    'debug_menu_reg_2a8_guard': _debug_menu_reg_guard(0x40, 0x18, 0x910aa000, '+0x2a8'),
+    'debug_menu_reg_2a8c_guard': _debug_menu_reg_guard(0x50, 0x18, 0xb942a808, 'copy +0x2a8'),
+    'debug_menu_reg_2a8f_guard': _debug_menu_reg_guard(0x40, 0x14, 0xf9415808, 'free +0x2b0'),
+    'debug_menu_reg_2c8_guard': _debug_menu_reg_guard(0x40, 0x18, 0x910b2000, '+0x2c8'),
+    'debug_menu_reg_2c8c_guard': _debug_menu_reg_guard(0x50, 0x18, 0xb942c808, 'copy +0x2c8'),
+    'debug_menu_reg_2c8f_guard': _debug_menu_reg_guard(0x40, 0x14, 0xf9416808, 'free +0x2d0'),
 }
 
 

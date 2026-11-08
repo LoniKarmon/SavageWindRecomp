@@ -536,6 +536,21 @@ SITES = [
          '529ae14a/7f800000 72a7a46a/ff80001f', 4),
     Site('subsys_param_array_guard', 'code', 'b9410a68 7100051f 5400034b/ff00001f f95c8275 2a1f03f4 '
          '5285bc16/7f800000 b9400aa8', 3),
+    # run54's entry-table lookup crash (tools/patches.py subsys_entry_lookup_guard): the boot's walk past the
+    # guarded subsystem record reaches the name-entry lookup f_7000eceac8 (the bl 0x7000ecea90 in its thin
+    # wrapper f_7000ecea7c, its sole caller -- the dump's lr 0x7000ecea94; x0 = the subsystem block found at
+    # 0x72d5242958, a real object) and reads its bound pair through the table base the never-built title init
+    # left null in the block's field [x0+0x20] -- ldr x9, [x0, #0x20] and ldrh w9, [x8] -- the fault 0x0 (host
+    # f_7000eceac8+d8: movzx eax, WORD PTR [r9+rsi*1], rsi = the null base, the index csel'd to 0 since the
+    # count [x0+0x18] <= 1). The sweep of the whole lookup: its entry loop reads the entries through the
+    # sibling field [x0+0x30] (ldr x0, [x25, x8] at 0x7000eceb60, also null -- the next fault waiting), and
+    # every later deref runs on found entries (the guest's own cbz x0 skips null ones) or the vtable/string
+    # work; the wrapper re-reads the same two fields only on the found path, after its tbnz w0, #0x1f test
+    # routes a negative answer to its own mov w0, #-1 -- the not-found answer the never-built table already
+    # is, so the guard returns it from the lookup's entry, and the found path the -1 answers is exactly the
+    # boot's state today: nothing to find.
+    Site('subsys_entry_lookup_guard', 'code', 'a9ba7bfd f9000bfb a90267fa a9035ff8 a90457f6 a9054ff4 '
+         '910003fd b9401808 6b01011f f9401009 b940280a 1a9f8028 8b28c928 79400109 79400508', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -632,6 +647,10 @@ OPTIONAL_GROUPS = [
      'subsys_param_array_guard'), # drives the subsystem record the lookup thunk found (a real block) through
                                   # the fields the never-built init left null -- skip the mode store through
                                   # the null record field, and its param array loop to its own count skip)
+    ('subsys_entry_lookup_guard',),  # (run54's fault: the name-entry lookup reads its bound pair through the
+                                     # table base the never-built init left null in the real block's field
+                                     # [x0+0x20] -- return the guest's own not-found -1 from its entry, the
+                                     # sole caller's tbnz routes it to its own -1, nothing to find)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -844,6 +863,7 @@ KNOWN = {
         'subsys_list_reg_guard': 0x7001237d00,
         'subsys_record_mode_guard': 0x7001264390,
         'subsys_param_array_guard': 0x7001264594,
+        'subsys_entry_lookup_guard': 0x7000eceac8,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

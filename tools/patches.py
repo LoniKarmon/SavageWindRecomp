@@ -1305,6 +1305,29 @@ def _subsys_param_array_guard(gen, a):
             f'  /* {a:#x}: ldr x21, [x19, #0x3900] (subsystem param array: null base, guarded) */')
 
 
+# The name-entry lookup's null table (game_sites.py subsys_entry_lookup_guard, tools/patches.py): run54's
+# fault -- the boot's walk past the guarded subsystem record reaches the name-entry lookup f_7000eceac8 (the
+# bl 0x7000ecea90 in its thin wrapper f_7000ecea7c, its sole caller -- the dump's lr 0x7000ecea94; x0 = the
+# subsystem block the walk found at 0x72d5242958, a real object with the dump's [x0] vtable) and reads its
+# bound pair through the table base the never-built title init left null in the block's field [x0+0x20]:
+# ldr x9, [x0, #0x20] and ldrh w9, [x8] -- the fault 0x0 (host f_7000eceac8+d8: movzx eax, WORD PTR
+# [r9+rsi*1], rsi = the null base, the index csel'd to 0 since the count [x0+0x18] is <= the asked entry,
+# the dump's w1 1). The sweep of the whole lookup: its entry loop reads the entries through the sibling
+# field [x0+0x30] (ldr x0, [x25, x8] at 0x7000eceb60, the next fault waiting on the same never-built init),
+# the per-entry virtual calls and the compare loop run on found entries (the guest's own cbz x0 skips the
+# null ones -- the array's holes), and the not-found walk returns the guest's own -1 (mov w20, #-1). The
+# caller only reads the same two fields again on the found path, after its tbnz w0, #0x1f test routes a
+# negative answer to its own mov w0, #-1, so the lookup's entry guard answering -1 reaches the whole walk
+# with the answer the never-built table already is: nothing to find.
+def _subsys_entry_lookup_guard(gen, a):
+    assert _word(gen, a) == 0xa9ba7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x60]! (the frame, entry)
+    assert _word(gen, a + 0x1c) == 0xb9401808, hex(_word(gen, a + 0x1c))  # ldr w8, [x0, #0x18] (the count)
+    assert _word(gen, a + 0x24) == 0xf9401009, hex(_word(gen, a + 0x24))  # ldr x9, [x0, #0x20] (the table)
+    assert _word(gen, a + 0x34) == 0x79400109, hex(_word(gen, a + 0x34))  # ldrh w9, [x8] (the fault)
+    return ('{ if (!LD64(c->x[0] + 0x20ull)) { c->x[0] = 0xffffffffull; return; } }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x60]! (name-entry lookup: null table, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1436,6 +1459,7 @@ PATCHES = {
     'subsys_list_reg_guard': _subsys_list_reg_guard,
     'subsys_record_mode_guard': _subsys_record_mode_guard,
     'subsys_param_array_guard': _subsys_param_array_guard,
+    'subsys_entry_lookup_guard': _subsys_entry_lookup_guard,
 }
 
 

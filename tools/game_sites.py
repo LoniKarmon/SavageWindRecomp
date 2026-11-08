@@ -485,6 +485,23 @@ SITES = [
     # sites (the other families' guarded loads jump past the call before it runs).
     Site('registry_lookup_guard', 'code', 'd10183ff a9017bfd f90013f9 a9035ff8 a90457f6 a9054ff4 '
          '910043fd b9803808', 0),
+    # run51's record-subsystem init crash (tools/patches.py record_subsys_init_guard): the actor init's tail
+    # builds the title actor's record subsystem with f_700124fccc (bl 0x700126407c, the sole caller, x0 = the
+    # freshly allocated 0x31d8 subsystem block, kept through [x19+0x3a8] and ignored after the call). The init
+    # loads the registry base it stored into the block's own field [x25+0x5d0] (only stored when the lookup
+    # f_700155ddc4 answers non-null -- it answers null here) and drives it through the param-array thunk
+    # f_7000fb1224 (ldr x8, [x0, #0x40] -- x0 0, fault 0x40 exactly, host f_7000fb1224+0x14). The sweep of the
+    # whole function: both thunk calls (0x700124feb4/0x700124ffb0) fault on the null field, and so does every
+    # later chain through it -- the record store's sibling field [x25+0x5d8] (block 1's allocation x23, the
+    # consumer's own ldr x8, [x0] at 0x700124fff0 right after the second thunk call), the param loop's vtable
+    # call through [x27+0x5d8] (0x700125036c), the third field read's [x8+0x38] chain (0x7001250438, the guest's
+    # own null-name skip cbz comes one deref too late), and the tail's f_7000faa8b8 record-destroy step through
+    # [x19+0x3c] the skipped blocks would have built. Every dereference of the null field and its unfilled
+    # siblings dies inside this one function, and the sole caller ignores the result (mov w0, #0x178 on its very
+    # next instruction, the next subsystem's alloc) -- so one entry guard on the null field returns from the
+    # whole record init, exactly what a never-built registry means.
+    Site('record_subsys_init_guard', 'code', 'd10583ff a9107bfd a9116ffc a91267fa a9135ff8 a91457f6 '
+         'a9154ff4 910403fd 52821f08 aa0203f8 aa0103f6 aa0003f9 8b080000 2a1f03e1 52840002/7f800000', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -569,6 +586,10 @@ OPTIONAL_GROUPS = [
     ('registry_lookup_guard',),  # (run50's fault: the registry lookup reads its entry count through the null
                                  # registry the never-built init left in field [x2+0x55e8] -- return the
                                  # guest's own empty-registry -1, every caller's not-found branch follows)
+    ('record_subsys_init_guard',),  # (run51's fault: the record subsystem init drives the registry base the
+                                    # never-built lookup left null in the block's own field [x25+0x5d0] --
+                                    # return from its entry, the sole caller ignores the result, the whole
+                                    # record init is what the null registry means to skip)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -776,6 +797,7 @@ KNOWN = {
         'actor_subsys_ref_guard': 0x7001264228,
         'subsys_consume_guard': 0x700126daf0,
         'registry_lookup_guard': 0x7000f778dc,
+        'record_subsys_init_guard': 0x700124fccc,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

@@ -1218,6 +1218,30 @@ def _registry_lookup_guard(gen, a):
             f'  /* {a:#x}: sub sp, sp, #0x60 (registry lookup: null registry, guarded) */')
 
 
+# The record subsystem init's null registry base (game_sites.py record_subsys_init_guard, tools/patches.py):
+# run51's fault -- the actor init's tail builds the title actor's record subsystem with f_700124fccc (its sole
+# caller, the bl 0x700126407c in the guarded tail; x0 = the freshly allocated 0x31d8 subsystem block, kept
+# through [x19+0x3a8], the result ignored). The init stores the registry base into the block's own field
+# [x25+0x5d0] -- only when the lookup f_700155ddc4 answers non-null, and it answers null for the never-built
+# registry -- and drives it through the param-array thunk f_7000fb1224 (x0 = the field, ldr x8, [x0, #0x40],
+# faulting at 0x40 exactly, the dump's x0 0). The sweep of the whole function: both thunk calls fault on the
+# null field and the caller dereferences the result (ldr x8, [x0, #0x10] at 0x700124feb8), and every later
+# chain dies through it or its unfilled siblings -- the block-1 record's field [x25+0x5d8] the consumer reads
+# its vtable through (the ldr x8, [x0] at 0x700124fff0, the next fault waiting), the param loop's vtable call
+# through [x27+0x5d8] (0x700125036c), the third field read's [x8+0x38] chain whose guest null-name cbz skips
+# only after that deref (0x7001250438), and the tail's record-destroy step f_7000faa8b8 through the block's
+# [x0+0x3c] the skipped blocks never built. The guest's own absent paths prove the skip: the alloc-fail cbz
+# reaches the return at 0x70012507f8, the null-name cbz at the third read reaches 0x70012507b8 -- and the
+# caller ignores the result (mov w0, #0x178, the next subsystem's alloc, on its very next instruction), so
+# one entry guard on the null field returns from the whole record init before the frame.
+def _record_subsys_init_guard(gen, a):
+    assert _word(gen, a) == 0xd10583ff, hex(_word(gen, a))  # sub sp, sp, #0x160 (the frame, pins the entry)
+    assert _word(gen, a + 0x2c) == 0xaa0003f9, hex(_word(gen, a + 0x2c))  # mov x25, x0 (the block)
+    assert _word(gen, a + 0x1e0) == 0xf942eb20, hex(_word(gen, a + 0x1e0))  # ldr x0, [x25, #0x5d0] (the field)
+    return ('{ if (!LD64(c->x[0] + 0x5d0ull)) return; }'
+            f'  /* {a:#x}: sub sp, sp, #0x160 (record subsystem init: null registry base, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1344,6 +1368,7 @@ PATCHES = {
     'actor_subsys_ref_guard': _actor_subsys_ref_guard,
     'subsys_consume_guard': _subsys_consume_guard,
     'registry_lookup_guard': _registry_lookup_guard,
+    'record_subsys_init_guard': _record_subsys_init_guard,
 }
 
 

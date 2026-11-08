@@ -403,6 +403,16 @@ SITES = [
     # so returning without building is exactly what a context-less actor means.
     Site('param_ctor_ctx_guard', 'code', 'd10183ff a9017bfd f90013f9 a9035ff8 a90457f6 a9054ff4 910043fd '
          '29406037', 0),
+    # run42's param-list crash (tools/patches.py actor_param_ctx_guard): past the guarded constructors the builder
+    # f_7000fb2804 reached its message-parameter step -- f_7000fe9210 reads the descriptor count through x1 at its
+    # entry (the builder's context, x20 = its x3, straight through) and gates the catalog it copies entries from on
+    # [*catalog_static+0x28] >= 0x4c (76: the message table's version) -- and with the context null, [0+4] faulted
+    # at 0x4; with the gate open, its copy loop faults on the never-built catalog (static 0x7001e36048, still 0 in
+    # bss: the title init that loads the message files never ran, the same init behind the uinj record and the
+    # param-registration list). One entry guard on the context skips the whole builder: its sweeps under run41/42
+    # showed every other deref through the record or the real stack block, and its caller ignores its return.
+    Site('actor_param_ctx_guard', 'code', 'a9ba7bfd a9016ffc 910003fd a90267fa a9035ff8 a90457f6 a9054ff4 '
+         'd10ac3ff 528bb008 aa0303f4', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -464,6 +474,9 @@ OPTIONAL_GROUPS = [
     ('param_ctor_ctx_guard',),  # (run41's fault: the param-object constructors register their objects into the
                                    # actor context's entry list -- with the context never built, x3 is null: skip
                                    # the construction, its only purpose was the registration into that list)
+    ('actor_param_ctx_guard',),  # (run42's fault: the message-parameter builder runs entirely on the never-built
+                                   # actor context -- its descriptor and the message catalog it copies from are
+                                   # both absent: return from the builder, its caller ignores the result)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -661,6 +674,7 @@ KNOWN = {
         'uinj_db_guard': 0x7000f9e5ec,
         'light_rig_flag_guard': 0x7000fb313c,
         'param_ctor_ctx_guard': 0x7000ff64dc,
+        'actor_param_ctx_guard': 0x7000fb2804,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

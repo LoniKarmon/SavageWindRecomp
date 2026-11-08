@@ -1041,6 +1041,29 @@ def _param_ctor_ctx_guard(gen, a):
             f'  /* {a:#x}: sub sp, sp, #0x60 (param object ctor: context list, guarded) */')
 
 
+# The actor's parameter-list builder (game_sites.py actor_param_ctx_guard, tools/patches.py): run42's fault ran the
+# story of the last three families through one pointer -- the builder's context parameter x3 (held as x20) is the
+# never-built title context, null like the uinj record's db (the thunk now hands out a zeroed default record for it)
+# and the param-registration list (whose constructors this guard already skips). Past those, the builder's message
+# step f_7000fe9210 takes the context as its descriptor and reads the entry count through it at its very first
+# instruction (its prologue's str x1, [sp, #0x28]; ldr w1, [x1]: run42's fault pc was one gate later, but any flow
+# into it faults on the null descriptor the moment the count path opens), and the copy path gates the message
+# catalog -- static 0x7001e36048, the
+# version field at +0x28 of the object it points at, needs >= 76 (the guest's own too-old branch nulls the catalog
+# and its copy loop then reads through the null) -- which the title's never-completed init left at 0 in bss. A
+# sweep of the builder's remaining flows found every other dereference through the zeroed record or the real stack
+# block (the entry loop and constructors are guarded one family up), and the actor step after the builder's bl
+# ignores its return and only registers the actor through its real factory. So: return from the builder when the
+# context is absent -- a context-less actor is exactly an actor with no parameters to build.
+def _actor_param_ctx_guard(gen, a):
+    assert _word(gen, a) == 0xa9ba7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x60]! (the frame, pins entry)
+    assert _word(gen, a + 0x1c) == 0xd10ac3ff, hex(_word(gen, a + 0x1c))  # sub sp, sp, #0x2b0 (the locals frame)
+    assert _word(gen, a + 0x20) == 0x528bb008, hex(_word(gen, a + 0x20))  # mov w8, #0x5d80 (the actor field)
+    assert _word(gen, a + 0x24) == 0xaa0303f4, hex(_word(gen, a + 0x24))  # mov x20, x3 (the context, held)
+    return ('{ if (!c->x[3]) return; }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x60]! (param builder: context, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1157,6 +1180,7 @@ PATCHES = {
     'uinj_db_guard': _uinj_db_guard,
     'light_rig_flag_guard': _light_rig_flag_guard,
     'param_ctor_ctx_guard': _param_ctor_ctx_guard,
+    'actor_param_ctx_guard': _actor_param_ctx_guard,
 }
 
 

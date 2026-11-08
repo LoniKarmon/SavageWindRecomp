@@ -1085,6 +1085,28 @@ def _param_list_xfer_guard(gen, a):
             f'  /* {a:#x}: stp x29, x30, [sp, #-0x50]! (param transfer: empty vector, guarded) */')
 
 
+# The title actor's default-param subsystem (game_sites.py param_subsys_guard, tools/patches.py): run46's fault --
+# the actor init step f_7001263218 (guest lr 0x70012633fc) took its count<1 path (the guarded ctor left the param
+# vector empty, count 0) and loaded the actor's default-param subsystem through field [x20+0x3680], then wrote
+# through it: str wzr, [x23, #0x220] cleared the record count, f_700100fd54 copied the +0x220..+0x225 flag window
+# into +0x500..+0x540, two record headers went through the record array at [x23+0x230] (bl f_700100fd70 twice),
+# and sibling subsystem stores followed through fields [x20+0x3388] (a flag word), +0x3678 (a float pair at
+# +0x6ed0/+0x6ed4) and +0x3900 (a mode byte at +0x38). The never-built title init left the fields 0 -- the first
+# store, ldr x23, [x20, #0x3680] then str wzr, [x23, #0x220], faulted at 0x220 exactly, x23 0 in the dump and the
+# host disasm reading mov eax,[rdi+rdx+0x258]-style: mov [rdx+0x220], 0 right after mov rdx, [rdx+0x3680]. The
+# whole block sits between this load and the count<1 merge label the same path already reaches (the b.lt at
+# 0x70012636dc, count still 0, targets 0x7001263758): with no subsystem there is nothing to initialize, so on a
+# null field jump to that existing label. The sweep of the merge region found only the real stack block, embedded
+# actor fields (x19 + 0x10, 0x78, the param getters f_7000f75e40/f75e5c/f75e84 the builder already calls safely)
+# and stores into the actor's own block -- no further dereference of the absent subsystem's fields before the
+# merge, so one guard covers the family.
+def _param_subsys_guard(gen, a):
+    assert _word(gen, a) == 0xf95b4297, hex(_word(gen, a))  # ldr x23, [x20, #0x3680] (the subsystem, null here)
+    assert _word(gen, a + 8) == 0xb90222ff, hex(_word(gen, a + 8))  # str wzr, [x23, #0x220] (the fault, count)
+    return ('{ c->x[23] = LD64(c->x[20] + 0x3680ull); if (!c->x[23]) goto L_7001263758; }'
+            f'  /* {a:#x}: ldr x23, [x20, #0x3680] (actor init: default-param subsystem, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1203,6 +1225,7 @@ PATCHES = {
     'param_ctor_ctx_guard': _param_ctor_ctx_guard,
     'actor_param_ctx_guard': _actor_param_ctx_guard,
     'param_list_xfer_guard': _param_list_xfer_guard,
+    'param_subsys_guard': _param_subsys_guard,
 }
 
 

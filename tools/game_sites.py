@@ -423,6 +423,17 @@ SITES = [
     # sole caller ignores the result (it re-derives x0 from x20 right after the bl at 0x70012632f8).
     Site('param_list_xfer_guard', 'code', 'a9bb7bfd a90167fa a9025ff8 a90357f6 a9044ff4 910003fd b949d808 '
          '5280be09', 0),
+    # run46's default-param block crash (tools/patches.py param_subsys_guard): the title actor's init step
+    # f_7001263218 (its fault lr 0x70012633fc, count<1 path) loads the actor's default-param subsystem through
+    # field [x20+0x3680] and initializes it: str wzr, [x23, #0x220] clears the record count, f_700100fd54 copies
+    # the +0x220..+0x225 flag window into +0x500..+0x540, two record headers go through the array at [x23+0x230]
+    # (bl f_700100fd70 twice), and sibling subsystem stores follow through fields [x20+0x3388]/+0x3678/+0x3900.
+    # The never-built title init left the field 0 -- the first store faulted at 0x220 exactly (x23 0 in the dump).
+    # The whole block sits between the entry label and the count<1 merge label (the b.lt at 0x70012636dc reaches
+    # 0x7001263758 anyway): with no subsystem there is nothing to initialize, so jump to that existing label --
+    # its flow reads only the real stack block and embedded actor fields (x19 + 0x10/0x78) and the guarded-safe
+    # param getters f_7000f75e40/f75e5c/f75e84.
+    Site('param_subsys_guard', 'code', 'f95b4297 aa1703e0 b90222ff 94000000/fc000000', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -490,6 +501,9 @@ OPTIONAL_GROUPS = [
     ('param_list_xfer_guard',),  # (run45's fault: the param transfer walks record 0 of the vector the guarded
                                    # ctor left never built -- a null vector has no object to transfer: return,
                                    # the sole caller ignores the result)
+    ('param_subsys_guard',),  # (run46's fault: the title actor init's default-param block writes through the
+                                 # subsystem field the never-built init left 0 -- skip the whole block on null,
+                                 # its own count<1 merge label where nothing is left to initialize)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -689,6 +703,7 @@ KNOWN = {
         'param_ctor_ctx_guard': 0x7000ff64dc,
         'actor_param_ctx_guard': 0x7000fb2804,
         'param_list_xfer_guard': 0x7000ffb320,
+        'param_subsys_guard': 0x70012635d0,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

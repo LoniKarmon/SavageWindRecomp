@@ -1328,6 +1328,52 @@ def _subsys_entry_lookup_guard(gen, a):
             f'  /* {a:#x}: stp x29, x30, [sp, #-0x60]! (name-entry lookup: null table, guarded) */')
 
 
+# The indexed getEntry lookups' null table (game_sites.py's three subsys_index_get sites, tools/patches.py):
+# run55's fault -- the boot's init step f_7001264644 (the frame lr 0x70012646b4, right after the guarded
+# subsystem record's next sibling step) looks up subsystem entries by name through the guarded wrapper
+# chain, whose cbnz/cbz paths all ran clean in run55, falls back to the indexed getEntry lookups and faults
+# in f_7000fb42f8: it clamps the asked entry to a global bound (its ldrsh w9, [x8] -- a real address, the
+# dump's x8 0x7000...0x101-clamped 0 index) and reads the bound pair through the table base the never-built
+# title init left null in the block's field [x0+0x20] (the dump's x0/x20 0x72d5242958, a real block): ldr
+# x8, [x0, #0x20] and ldrh w10, [x10, #2] -- the fault 0x2 (host f_7000fb42f8+8d: movzx ecx, WORD PTR
+# [rsi+rcx*4+0x2], rsi = the null base). The sweep of the whole lookup: the entry array comes through the
+# sibling field [x0+0x30] (the ldr x19, [x9, x8, lsl #3] -- the next fault waiting on the same never-built
+# init), the per-entry virtual call runs only on found entries (the guest's own cbz x19 skips the array's
+# holes), and every answer is a pointer the callers test: the not-found paths answer the guest's own mov
+# x0, xzr, the init step stores it straight into its subsystem fields ([x19+0x118/0x120/...], its cbnz
+# after the name lookup's found check too), the f_7000fb2804 callers test it with cbz/cbnz or cmp #0 +
+# csel, and the rest pass it as a to-be-tested pointer deeper. Two shape-identical siblings the same step
+# calls right after -- f_7000fb44b4 (bound global +0xf38, its two call sites at 0x7001264778/0x70012647bc)
+# and f_7000fb45dc (global +0xb00, the three later name lookups' fallback) -- read the same two fields the
+# same way and would fault in turn, so all three get the same entry guard answering the guest's own null
+# entry: exactly what a never-built table is, nothing to get.
+def _subsys_index_get_guard_1(gen, a):
+    assert _word(gen, a) == 0xa9be7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x20]! (the frame, entry)
+    assert _word(gen, a + 0x18) == 0xb940180a, hex(_word(gen, a + 0x18))  # ldr w10, [x0, #0x18] (the count)
+    assert _word(gen, a + 0x24) == 0xf9401008, hex(_word(gen, a + 0x24))  # ldr x8, [x0, #0x20] (the table)
+    assert _word(gen, a + 0x34) == 0x7940054a, hex(_word(gen, a + 0x34))  # ldrh w10, [x10, #2] (the fault)
+    return ('{ if (!LD64(c->x[0] + 0x20ull)) { c->x[0] = 0ull; return; } }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x20]! (indexed getEntry: null table, guarded) */')
+
+
+def _subsys_index_get_guard_2(gen, a):
+    assert _word(gen, a) == 0xa9be7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x20]! (the frame, entry)
+    assert _word(gen, a + 0x18) == 0xb940180a, hex(_word(gen, a + 0x18))  # ldr w10, [x0, #0x18] (the count)
+    assert _word(gen, a + 0x24) == 0xf9401008, hex(_word(gen, a + 0x24))  # ldr x8, [x0, #0x20] (the table)
+    assert _word(gen, a + 0x34) == 0x7940054a, hex(_word(gen, a + 0x34))  # ldrh w10, [x10, #2] (the fault)
+    return ('{ if (!LD64(c->x[0] + 0x20ull)) { c->x[0] = 0ull; return; } }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x20]! (indexed getEntry 2: null table, guarded) */')
+
+
+def _subsys_index_get_guard_3(gen, a):
+    assert _word(gen, a) == 0xa9be7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x20]! (the frame, entry)
+    assert _word(gen, a + 0x18) == 0xb940180a, hex(_word(gen, a + 0x18))  # ldr w10, [x0, #0x18] (the count)
+    assert _word(gen, a + 0x24) == 0xf9401008, hex(_word(gen, a + 0x24))  # ldr x8, [x0, #0x20] (the table)
+    assert _word(gen, a + 0x34) == 0x7940054a, hex(_word(gen, a + 0x34))  # ldrh w10, [x10, #2] (the fault)
+    return ('{ if (!LD64(c->x[0] + 0x20ull)) { c->x[0] = 0ull; return; } }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x20]! (indexed getEntry 3: null table, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1460,6 +1506,9 @@ PATCHES = {
     'subsys_record_mode_guard': _subsys_record_mode_guard,
     'subsys_param_array_guard': _subsys_param_array_guard,
     'subsys_entry_lookup_guard': _subsys_entry_lookup_guard,
+    'subsys_index_get_guard_1': _subsys_index_get_guard_1,
+    'subsys_index_get_guard_2': _subsys_index_get_guard_2,
+    'subsys_index_get_guard_3': _subsys_index_get_guard_3,
 }
 
 

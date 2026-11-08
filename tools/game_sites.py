@@ -551,6 +551,31 @@ SITES = [
     # boot's state today: nothing to find.
     Site('subsys_entry_lookup_guard', 'code', 'a9ba7bfd f9000bfb a90267fa a9035ff8 a90457f6 a9054ff4 '
          '910003fd b9401808 6b01011f f9401009 b940280a 1a9f8028 8b28c928 79400109 79400508', 0),
+    # run55's indexed subsystem-entry crash family (tools/patches.py index-get guards, three sites): the
+    # boot's next init step f_7001264644 (the frame lr 0x70012646b4) looks up five subsystem entries by
+    # name through the guarded wrapper chain (its cbnz/cbz paths all ran clean in run55), falls back to
+    # the indexed getEntry lookups, and faults in f_7000fb42f8: it clamps the asked entry to the bound
+    # it reads from a global (its first use, the ldrsh w9,[x8] -- a real address), then reads its bound
+    # pair through the table base the never-built title init left null in the block's field [x0+0x20]
+    # (the dump's x0/x20 0x72d5242958, a real block) -- ldr x8, [x0, #0x20] and ldrh w10, [x10, #2] --
+    # the fault 0x2 (host f_7000fb42f8+8d: movzx ecx, WORD PTR [rsi+rcx*4+0x2], rsi = the null base).
+    # The sweep of the whole lookup: its entry array comes through the sibling field [x0+0x30] (the ldr
+    # x19, [x9, x8, lsl #3], the next fault waiting on the same never-built init), the per-entry virtual
+    # call runs on found entries (its cbz x19 skips the array's holes), and the not-found answers are
+    # the guest's own mov x0, xzr -- a null entry, which every caller tests (cbnz/cbz, or the csel after
+    # cmp x0, #0, or passing it as a found-entry pointer to be tested deeper) and the init step stores
+    # straight into its subsystem fields. Two shape-identical siblings the same step calls right after
+    # -- f_7000fb44b4 (bound global 0xf38, two call sites) and f_7000fb45dc (global 0xb00, three call
+    # sites, the later name lookups' fallback) -- read the same two fields the same way and would fault
+    # in turn, so each of the three gets the same entry guard answering the guest's own null entry:
+    # exactly what a never-built table is, nothing to get. (Their clones f_7000fb9438/f_7001068190 read
+    # the same fields too but are not on this boot path; they will bring their own family if reached.)
+    Site('subsys_index_get_guard_1', 'code', 'a9be7bfd f9000bf3 910003fd 37f803a1/fff8001f f0007408 '
+         '913d0108 b940180a f9400108 79c00109 f9401008 6b09015f 1a9f8129 8b29c90a 7940054a', 0),
+    Site('subsys_index_get_guard_2', 'code', 'a9be7bfd f9000bf3 910003fd 37f803a1/fff8001f f0007408 '
+         '913ce108 b940180a f9400108 79c00109 f9401008 6b09015f 1a9f8129 8b29c90a 7940054a', 0),
+    Site('subsys_index_get_guard_3', 'code', 'a9be7bfd f9000bf3 910003fd 37f803a1/fff8001f 90007428 '
+         '912c0108 b940180a f9400108 79c00109 f9401008 6b09015f 1a9f8129 8b29c90a 7940054a', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -651,6 +676,10 @@ OPTIONAL_GROUPS = [
                                      # table base the never-built init left null in the real block's field
                                      # [x0+0x20] -- return the guest's own not-found -1 from its entry, the
                                      # sole caller's tbnz routes it to its own -1, nothing to find)
+    ('subsys_index_get_guard_1',    # (run55's fault family: the init step's indexed getEntry lookups read
+     'subsys_index_get_guard_2',    # their bound pair through the same null table base [x0+0x20] and their
+     'subsys_index_get_guard_3'),   # entries through the null [x0+0x30] -- answer the guest's own null
+                                    # entry from each entry, the callers' cbnz/cbz/csel handle it)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -864,6 +893,9 @@ KNOWN = {
         'subsys_record_mode_guard': 0x7001264390,
         'subsys_param_array_guard': 0x7001264594,
         'subsys_entry_lookup_guard': 0x7000eceac8,
+        'subsys_index_get_guard_1': 0x7000fb42f8,
+        'subsys_index_get_guard_2': 0x7000fb44b4,
+        'subsys_index_get_guard_3': 0x7000fb45dc,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

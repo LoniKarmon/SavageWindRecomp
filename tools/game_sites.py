@@ -383,6 +383,13 @@ SITES = [
     # as the actor's uinj record, which its param builder then reads: an empty name at +0x70, null fields and all
     # override flags clear, exactly what a record for an actor the database never learned should read as.
     Site('uinj_db_guard', 'code', 'f9401408 91138100 14000000/fc000000', 0),
+    # run40's param-builder crash (tools/patches.py light_rig_flag_guard): with the zeroed default record installed,
+    # the builder's entry loop asks the helper f_7000ff2d24 for entry #w25 of the record's light-rig parameter set
+    # -- [record+0xf28] + 0x53658 + 0x160 * w25 (8 entries, csel'd) -- but the zeroed record's back-pointer reads 0,
+    # leaving the entry base at 0x53658, unmapped: the loop's first read, ldrb w8, [x0, #0x48], faults at 0x536a0.
+    # Guard the read on that: a base below 4 GiB (any real back-pointer is a heap pointer) skips the entry, which
+    # is exactly what a record whose set was never built means. The helper's only call site; at: 1 pins the ldrb.
+    Site('light_rig_flag_guard', 'code', '9400fefb 39412008 34000008/ff00001f', 1),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -438,7 +445,9 @@ OPTIONAL_GROUPS = [
                                    # debug-menu entry registration and the whole sibling cluster over the table
                                    # the half-initialized menu never built: entry guards, nothing to register)
     ('uinj_db_guard',),  # (the title's actor creation, whose uinj actor-database member the never-completed
-                                   # title init never built: guard the member load, the null flows only to stores)
+                                   # title init never built: guard the member load, hand out a zeroed default record)
+    ('light_rig_flag_guard',),  # (run40's fault: the zeroed record's null light-rig back-pointer leaves the param
+                                   # builder's entry loop on an unmapped 0x53658 base -- skip the entries it lacks)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -634,6 +643,7 @@ KNOWN = {
         'debug_menu_reg_278c_guard': 0x7000ec7398,
         'debug_menu_reg_278f_guard': 0x7000ec7444,
         'uinj_db_guard': 0x7000f9e5ec,
+        'light_rig_flag_guard': 0x7000fb313c,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

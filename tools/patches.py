@@ -1002,6 +1002,27 @@ def _uinj_db_guard(gen, a):
             f'  /* {a:#x}: ldr x8, [x0, #0x28] (actor create: uinj db member, guarded) */')
 
 
+# The actor param builder's entry loop (game_sites.py light_rig_flag_guard, tools/patches.py): run40's fault — with
+# the zeroed default record in place, the builder f_7000fb2804 walked its light-rig entry loop (w25 = 0..7) and each
+# iteration asked the helper f_7000ff2d24 -- its only call site -- for entry #w25 of the record's parameter set:
+# [record+0xf28] + 0x53658 + 0x160 * w25, clamped to the set's 8 entries with a csel. The zeroed record's back-pointer
+# reads 0, so the base stayed 0x53658 + 0x160 * w25 -- an offset, not a pointer, unmapped in the guest -- and the
+# loop's first read, ldrb w8, [x0, #0x48] (the entry's use flag), faulted at 0x53658 + 0x48 = 0x536a0, lr 0x7000fb313c.
+# Guard that read: an entry base below 4 GiB (every real back-pointer is a heap pointer) means "no parameter set" --
+# jump to the loop's own continue label, the block the entry's two cbz guards already share (add w25, w25, #1; cmp;
+# b.ne -- w8 unused, so the skipped flag is dead there). The sweep of the builder's other record reads found them all
+# inside the pinned-zero span or plain stores, so this one guard closes the family. The helper's return value needs no
+# write-back: the flag it loads is dead on this path.
+def _light_rig_flag_guard(gen, a):
+    assert _word(gen, a) == 0x39412008, hex(_word(gen, a))  # ldrb w8, [x0, #0x48] (the entry's use flag)
+    nxt = _word(gen, a + 4)  # cbz w8, <continue label>
+    assert nxt & 0xFF00001F == 0x34000008, hex(nxt)
+    assert (a + 4 + sext((nxt >> 5) & 0x7FFFF, 19) * 4) == 0x7000fb31c8, hex(a + 4 + sext((nxt >> 5) & 0x7FFFF, 19) * 4)
+    return ('{ if (!(c->x[0] >> 32)) { x8 = c->x[8]; goto L_7000fb31c8; }'
+            ' x8 = LD8(c->x[0] + 0x48); c->x[8] = x8; }'
+            f'  /* {a:#x}: ldrb w8, [x0, #0x48] (param builder: light-rig entry flag, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1116,6 +1137,7 @@ PATCHES = {
     'debug_menu_reg_278c_guard': _debug_menu_reg_guard(0x50, 0x18, 0xb9427808, 'copy +0x278'),
     'debug_menu_reg_278f_guard': _debug_menu_reg_guard(0x40, 0x14, 0xf9414008, 'free +0x280'),
     'uinj_db_guard': _uinj_db_guard,
+    'light_rig_flag_guard': _light_rig_flag_guard,
 }
 
 

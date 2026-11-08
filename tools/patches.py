@@ -1064,6 +1064,27 @@ def _actor_param_ctx_guard(gen, a):
             f'  /* {a:#x}: stp x29, x30, [sp, #-0x60]! (param builder: context, guarded) */')
 
 
+# The param-object transfer (game_sites.py param_list_xfer_guard, tools/patches.py): run45's fault was the consumer
+# side of the construction family #10 skipped -- the actor-creation step f_7001263218 (its call at 0x70012632f8)
+# hands the actor's param block (x0 + 0x150) to f_7000ffb320, whose whole body is moving the block's param-object
+# vector (the +0x9d8 count / +0x9e0 data pair) into the actor's registry: it clamps to record index 0, reads the
+# record's entry count at [record+0x258] to pick the object, then the object's own list housekeeping -- its lookup
+# x24 feeds f_7000573698(x24 + 0x40, ...), f_7000ffb468, the stores to [x24+0x154] and [x24+0x158], and the push
+# onto the record's list at [record+0x98]. The guarded ctor never built the vector, so its data pointer stayed 0
+# (an alloc'd block the ctor would have filled): the smaddl base was 0 and the record-0 read, ldr w9, [x8, #0x258],
+# faulted at 0x258 exactly -- host pc f_7000ffb320+0x123 is mov eax, [rdi+rdx+0x258] right after imul rdi, rdi,
+# 0x5f0, and the run45 dump's fault address is 0x258 = 0 * 0x5f0 + 0x258. With a null vector there is no object to
+# transfer and every step of the body would have faulted on it, so return from the entry: the sole caller ignores
+# the result (it re-derives x0 from x20 on its very next instruction) and the record's list and index table simply
+# stay as they are -- exactly a context-less actor's empty parameter list arriving at its consumer.
+def _param_list_xfer_guard(gen, a):
+    assert _word(gen, a) == 0xa9bb7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x50]! (frame, pins the entry)
+    assert _word(gen, a + 0x18) == 0xb949d808, hex(_word(gen, a + 0x18))  # ldr w8, [x0, #0x9d8] (vector count)
+    assert _word(gen, a + 0x24) == 0xf944f019, hex(_word(gen, a + 0x24))  # ldr x25, [x0, #0x9e0] (vector data)
+    return ('{ if (!LD64(c->x[0] + 0x9e0ull)) return; }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x50]! (param transfer: empty vector, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1181,6 +1202,7 @@ PATCHES = {
     'light_rig_flag_guard': _light_rig_flag_guard,
     'param_ctor_ctx_guard': _param_ctor_ctx_guard,
     'actor_param_ctx_guard': _actor_param_ctx_guard,
+    'param_list_xfer_guard': _param_list_xfer_guard,
 }
 
 

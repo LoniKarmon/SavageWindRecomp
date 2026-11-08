@@ -413,6 +413,16 @@ SITES = [
     # showed every other deref through the record or the real stack block, and its caller ignores its return.
     Site('actor_param_ctx_guard', 'code', 'a9ba7bfd a9016ffc 910003fd a90267fa a9035ff8 a90457f6 a9054ff4 '
          'd10ac3ff 528bb008 aa0303f4', 0),
+    # run45's param-transfer crash (tools/patches.py param_list_xfer_guard): the consumer of the construction the
+    # param_ctor guard skipped. The actor-creation step f_7001263218 hands the actor's param block (x0 + 0x150) to
+    # the transfer f_7000ffb320 -- read the vector head ([x0+0x9d8] count, [x0+0x9e0] data), clamp to record index
+    # 0, read [record+0x258] -- and the guarded ctor left the vector never built, data 0: the record-0 read
+    # (smaddl of 0 * 0x5f0, then ldr w9, [x8, #0x258]) faulted at 0x258 exactly. The whole body is the transfer of
+    # record 0's param object (its lookup x24 feeds f_7000573698(x24+0x40), f_7000ffb468, the stores to +0x154/
+    # +0x158, the push onto the record's +0x98 list), so a null vector means nothing to transfer -- return; the
+    # sole caller ignores the result (it re-derives x0 from x20 right after the bl at 0x70012632f8).
+    Site('param_list_xfer_guard', 'code', 'a9bb7bfd a90167fa a9025ff8 a90357f6 a9044ff4 910003fd b949d808 '
+         '5280be09', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -477,6 +487,9 @@ OPTIONAL_GROUPS = [
     ('actor_param_ctx_guard',),  # (run42's fault: the message-parameter builder runs entirely on the never-built
                                    # actor context -- its descriptor and the message catalog it copies from are
                                    # both absent: return from the builder, its caller ignores the result)
+    ('param_list_xfer_guard',),  # (run45's fault: the param transfer walks record 0 of the vector the guarded
+                                   # ctor left never built -- a null vector has no object to transfer: return,
+                                   # the sole caller ignores the result)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -675,6 +688,7 @@ KNOWN = {
         'light_rig_flag_guard': 0x7000fb313c,
         'param_ctor_ctx_guard': 0x7000ff64dc,
         'actor_param_ctx_guard': 0x7000fb2804,
+        'param_list_xfer_guard': 0x7000ffb320,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

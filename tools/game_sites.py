@@ -589,6 +589,22 @@ SITES = [
     # a sibling load through the same real base -- it answers 0 and the guest's own cbz paths follow).
     Site('subsys_entry_name_guard', 'code', 'f940ac08 2a1f03e1 f9400108 f96e4108 f9400100', 4),
     Site('subsys_entry_pick_guard', 'code', '6b02013f 540000e9/ff00001f f96e4108 f862d913', 3),
+    # run57's directory-iterator family (tools/patches.py dir_entry_accessor_guard): the title step
+    # f_700009d950 (the frame's caller, a save-dir path read: bl 0x700009a7ec opened it, bl 0x700009b77c
+    # read 0x100 bytes -- a real read, the dump's x0/x1 0x72d636a230 the handle at [object+0x2a0]) reaches
+    # through its wrapper f_700007dfdc (the bl 0x700009d9d8, the dump's lr 0x700009d9dc) the leaf accessor
+    # f_700007eb78: it probes the tag 0x2002 at the handle's +0x14/+0x20/+0x2c (three entry sizes of the
+    # fs-iterator's header) and its common tail reads the value dword after the tag, ldr w0, [x8, #4] --
+    # x8 the csel leaves 0 when no probe matches, the fault 0x4 (host f_700007dfdc+bc, the inlined leaf
+    # tail: mov edx, DWORD PTR [rax+4], rax = 0; on our machine the handle carries no 0x2002 tag, the
+    # never-built fs state left it raw). The sweep of the leaf: its three probe reads run on the real
+    # handle -- the tail is its only dereference, so the guard answers the neutral 0 there, exactly the
+    # offset the value is used as: the caller wrapper stores it into the step's field [x19+0x298] (used
+    # as an entry's offset, 0 = at the buffer head), and the other two call sites (f_700009ed70's two
+    # saves-list iterations) add the answer straight onto the entry buffer base -- entry-at-offset-0, the
+    # same shape a fresh read buffer has.
+    Site('dir_entry_accessor_guard', 'code', 'aa0003e8 52840049 78414d0a 6b09015f 54000100/ff00001f '
+         'aa0003e8 78420d0a 6b09015f 54000080/ff00001f 7842cc08 6b09011f 9a9f0008 b9400500 d65f03c0', 12),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -697,6 +713,11 @@ OPTIONAL_GROUPS = [
      'subsys_entry_pick_guard'),    # the never-built init left null -- skip the first entry load and the
                                     # indexed pick to each function's own unknown-name string return, the
                                     # answer a null list already is)
+    ('dir_entry_accessor_guard',),  # (run57's fault family: the save-dir step's iterator accessor probes
+                                    # the tag 0x2002 at three handle offsets and reads the value dword
+                                    # after it -- its csel leaves 0 when no probe matches, our machine's
+                                    # never-built fs state leaves the handle untagged; answer the neutral
+                                    # 0 the callers use as an offset: entry at the buffer head)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -915,6 +936,7 @@ KNOWN = {
         'subsys_index_get_guard_3': 0x7000fb45dc,
         'subsys_entry_name_guard': 0x700126b924,
         'subsys_entry_pick_guard': 0x7000ffc444,
+        'dir_entry_accessor_guard': 0x700007eba8,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

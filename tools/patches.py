@@ -1407,6 +1407,30 @@ def _subsys_entry_pick_guard(gen, a):
             f'  /* {a:#x}: ldr x19, [x8, w2, sxtw #3] (subsystem list base: null, guarded) */')
 
 
+# The directory iterator's untagged handle (game_sites.py dir_entry_accessor_guard, tools/patches.py):
+# run57's fault -- the title step f_700009d950 (a save-dir path: bl 0x700009a7ec opened it, bl 0x700009b77c
+# read 0x100 bytes -- a real read the cmp x0, #0x100 passed, the dump's x0/x1/x21 0x72d636a230 the fs
+# iterator handle at [object+0x2a0]) reaches through its wrapper f_700007dfdc (the bl 0x700009d9d8 -- the
+# dump's lr 0x700009d9dc, its own lr 0x700007dff8 pinning the call site) the leaf accessor f_700007eb78:
+# it probes the tag 0x2002 at the handle's +0x14/+0x20/+0x2c (three entry sizes of the fs-iterator's
+# header) and its common tail reads the value dword after the tag, ldr w0, [x8, #4] -- the csel leaves x8
+# 0 when no probe matches, the fault 0x4 (host f_700007dfdc+bc, the inlined leaf tail: mov edx, DWORD PTR
+# [rax+4], rax = 0; on our machine the handle carries no 0x2002 tag, the never-built fs state left it
+# raw). The sweep of the leaf: its three probe reads run on the real handle (the fault is the fourth
+# dereference -- the tail is the leaf's only other one), so the guard answers the neutral 0 there, exactly
+# the offset the answer is used as: the caller wrapper stores it into the step's field [x19+0x298] (an
+# entry's offset, 0 = at the buffer head) and the other two call sites (f_700009ed70's two saves-list
+# iterations, bl 0x700009edc0/0x700009ee38) add the answer straight onto the entry buffer base --
+# entry-at-offset-0, the same shape a fresh read buffer has; the leaf itself keeps x8 0 past the guard,
+# which no caller reads.
+def _dir_entry_accessor_guard(gen, a):
+    assert _word(gen, a) == 0xb9400500, hex(_word(gen, a))  # ldr w0, [x8, #4] (the fault, x8 = the tag)
+    assert _word(gen, a - 4) == 0x9a9f0008, hex(_word(gen, a - 4))  # csel x8, x0, xzr, eq (0 when untagged)
+    return ('{ if (x8) { uint64_t ea = x8 + 0x4ull; uint64_t v = LD32(ea); x0 = (uint64_t)(v); }'
+            ' else { x0 = 0ull; } }'
+            f'  /* {a:#x}: ldr w0, [x8, #4] (dir iterator: untagged handle, guarded to offset 0) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1544,6 +1568,7 @@ PATCHES = {
     'subsys_index_get_guard_3': _subsys_index_get_guard_3,
     'subsys_entry_name_guard': _subsys_entry_name_guard,
     'subsys_entry_pick_guard': _subsys_entry_pick_guard,
+    'dir_entry_accessor_guard': _dir_entry_accessor_guard,
 }
 
 

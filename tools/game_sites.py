@@ -520,6 +520,22 @@ SITES = [
     Site('subsys_list_init_guard', 'code', 'd10183ff a9017bfd a90267fa a9035ff8 a90457f6 a9054ff4 '
          '910043fd f9402c16', 0),
     Site('subsys_list_reg_guard', 'code', 'a9be7bfd a9014ff4 910003fd f9402c08 aa0003f3 f9690508', 0),
+    # run53's subsystem record family (tools/patches.py subsystem param guards, two sites): the boot's first
+    # function past the whole guarded actor-init tail, f_70012642e8, looks up the subsystem block with the
+    # thunk f_7000fb272c (bl 0x700126437c) -- a real block (the dump's x0 0x72d5bbd048) whose record fields
+    # the never-built title init left null. Its first use stores the mode flag through the record field,
+    # ldr x8, [x0, #0x3388] (the guard's pattern anchor) and str w24, [x8, #0x18] -- the fault 0x18 (host
+    # f_70012642e8+267: mov DWORD PTR [rcx+0x18],edx, rcx = [rax+0x3388]); the guard skips just the store,
+    # the block's own fields the later stores write through x0 (host mov [rax+0x43c0]) stay. The block's
+    # +0x55f0 consumer self-gates (cbz 0x70012643f0), the first loop is count-gated, and the sweep's one
+    # other unguarded chain is the param array: ldr x21, [x19, #0x3900] into the loop head's ldr w8, [x21,
+    # #8] (the fault 0x8 waiting) -- the guard jumps the whole loop to its own count skip, the label the
+    # count's b.lt/b.eq reach (a null array means zero entries, exactly what the skip answers).
+    Site('subsys_record_mode_guard', 'code', 'f959c408 52800049/7f800000 52a8100a/7f800000 aa0003f3 '
+         'b9001918 52887808/7f800000 8b080008 f96af814 b9000109 528000c9/7f800000 b900610a '
+         '529ae14a/7f800000 72a7a46a/ff80001f', 4),
+    Site('subsys_param_array_guard', 'code', 'b9410a68 7100051f 5400034b/ff00001f f95c8275 2a1f03f4 '
+         '5285bc16/7f800000 b9400aa8', 3),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -612,6 +628,10 @@ OPTIONAL_GROUPS = [
      'subsys_list_reg_guard'),    # resume-callback through the list base the never-built init left null in
                                   # the real block's field [x0+0x58] -- return from both its entry and the
                                   # sibling registration step's entry, both callers ignore the results)
+    ('subsys_record_mode_guard',  # (run53's fault family: the boot's first function past the guarded tail
+     'subsys_param_array_guard'), # drives the subsystem record the lookup thunk found (a real block) through
+                                  # the fields the never-built init left null -- skip the mode store through
+                                  # the null record field, and its param array loop to its own count skip)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -822,6 +842,8 @@ KNOWN = {
         'record_subsys_init_guard': 0x700124fccc,
         'subsys_list_init_guard': 0x70012354dc,
         'subsys_list_reg_guard': 0x7001237d00,
+        'subsys_record_mode_guard': 0x7001264390,
+        'subsys_param_array_guard': 0x7001264594,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

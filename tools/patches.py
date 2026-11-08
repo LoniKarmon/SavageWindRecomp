@@ -1276,6 +1276,35 @@ def _subsys_list_reg_guard(gen, a):
             f'  /* {a:#x}: stp x29, x30, [sp, #-0x20]! (actor-list subsystem step 2: null list base, guarded) */')
 
 
+# The subsystem record's null fields (game_sites.py's two subsys sites, tools/patches.py): run53's fault --
+# the boot's first function past the whole guarded actor-init tail, f_70012642e8, looks up the subsystem
+# block with the thunk f_7000fb272c (bl 0x700126437c) and drives its record fields: a real block (the dump's
+# x0 0x72d5bbd048, kept as x19) whose fields the never-built title init left null. Its first use stores the
+# mode flag through the record field -- ldr x8, [x0, #0x3388] and str w24, [x8, #0x18], the fault 0x18 (host
+# f_70012642e8+267: mov DWORD PTR [rcx+0x18],edx, rcx = [rax+0x3388] reloaded from the spilled field) -- and
+# the guard skips just that store: the block's own later stores go through x0/the real block (host mov
+# [rax+0x43c0]), the +0x55f0 consumer self-gates (the guest's own cbz 0x70012643f0 -> 0x7001264588 skips the
+# vtable block the null ref answers), and the count-gated loop the guest falls through to reads the param
+# array: ldr x21, [x19, #0x3900] into the loop head's ldr w8, [x21, #8] -- the fault 0x8 waiting (the sweep
+# found no other unguarded chain: every remaining deref runs on entries of these two fields). A null param
+# array means zero entries, exactly what the loop's own count skip answers, so the second guard jumps the
+# whole loop to the label its count b.lt/b.eq reach (0x70012645f8: the after-loop record stores, through the
+# real x19 block).
+def _subsys_record_mode_guard(gen, a):
+    assert _word(gen, a) == 0xb9001918, hex(_word(gen, a))  # str w24, [x8, #0x18] (the fault, x8 = the field)
+    assert _word(gen, a - 0x10) == 0xf959c408, hex(_word(gen, a - 0x10))  # ldr x8, [x0, #0x3388] (the field)
+    return ('{ if (x8) { uint64_t ea = x8 + 0x18ull; ST32(ea, (uint32_t)c->x[24]); } }'
+            f'  /* {a:#x}: str w24, [x8, #0x18] (subsystem record: null record field, guarded) */')
+
+
+def _subsys_param_array_guard(gen, a):
+    assert _word(gen, a) == 0xf95c8275, hex(_word(gen, a))  # ldr x21, [x19, #0x3900] (the array base)
+    assert _word(gen, a - 0xc) == 0xb9410a68, hex(_word(gen, a - 0xc))  # ldr w8, [x19, #0x108] (the count)
+    assert _word(gen, a + 0xc) == 0xb9400aa8, hex(_word(gen, a + 0xc))  # ldr w8, [x21, #8] (the next fault)
+    return ('{ x21 = LD64(c->x[19] + 0x3900ull); if (!x21) goto L_70012645f8; }'
+            f'  /* {a:#x}: ldr x21, [x19, #0x3900] (subsystem param array: null base, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1405,6 +1434,8 @@ PATCHES = {
     'record_subsys_init_guard': _record_subsys_init_guard,
     'subsys_list_init_guard': _subsys_list_init_guard,
     'subsys_list_reg_guard': _subsys_list_reg_guard,
+    'subsys_record_mode_guard': _subsys_record_mode_guard,
+    'subsys_param_array_guard': _subsys_param_array_guard,
 }
 
 

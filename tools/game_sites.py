@@ -434,6 +434,17 @@ SITES = [
     # its flow reads only the real stack block and embedded actor fields (x19 + 0x10/0x78) and the guarded-safe
     # param getters f_7000f75e40/f75e5c/f75e84.
     Site('param_subsys_guard', 'code', 'f95b4297 aa1703e0 b90222ff 94000000/fc000000', 0),
+    # run47's gfx::System notify crash (tools/patches.py gfx_system_list_guard): the actor init's tail notify step
+    # f_7000f7658c dispatches the gfx::System's notification f_700123b8f8 through the actor's vtable (blr x8 at
+    # 0x7000fb4d2c, slot +8 of the object at [x20+0x5c90]). It loads the system's actor-list base through field
+    # [x0+0x58] -- x21 -- and reads the list's entry count through it: ldr w9, [x21, x9] with x9 the list head
+    # offset 0x5610, faulting at 0x5610 exactly (x21 0 in the dump) -- the never-built title init left the base
+    # null. The sweep: the mutex step above the fault gates itself (its cbz skips the lock when the static's
+    # object is absent), the count's compare reads through the [0x7001d76bf8] static, off the guarded path, and
+    # the notify loop below (bl f_7001236614 per entry, vtable +0xb8 name) runs only for entries of the skipped
+    # list. The busy-lock branch above already skips everyone through the function's own return label, so jump
+    # there: the blr's caller ignores the result (mov x0, x19 on its very next instruction).
+    Site('gfx_system_list_guard', 'code', 'f945fd08 b8696aa9 f96b0eaa', 1),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -504,6 +515,9 @@ OPTIONAL_GROUPS = [
     ('param_subsys_guard',),  # (run46's fault: the title actor init's default-param block writes through the
                                  # subsystem field the never-built init left 0 -- skip the whole block on null,
                                  # its own count<1 merge label where nothing is left to initialize)
+    ('gfx_system_list_guard',),  # (run47's fault: the gfx::System notify reads its actor-list count through the
+                                    # base the never-built init left 0 -- skip the notify on null, the guest's
+                                    # own busy-lock return label where nobody is notified)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -704,6 +718,7 @@ KNOWN = {
         'actor_param_ctx_guard': 0x7000fb2804,
         'param_list_xfer_guard': 0x7000ffb320,
         'param_subsys_guard': 0x70012635d0,
+        'gfx_system_list_guard': 0x700123b938,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

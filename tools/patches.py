@@ -1107,6 +1107,30 @@ def _param_subsys_guard(gen, a):
             f'  /* {a:#x}: ldr x23, [x20, #0x3680] (actor init: default-param subsystem, guarded) */')
 
 
+# The gfx::System's actor-list notify (game_sites.py gfx_system_list_guard, tools/patches.py): run47's fault --
+# the actor init's tail notify step f_7000f7658c dispatches the gfx::System's notification f_700123b8f8 through
+# the actor's vtable (blr x8 at 0x7000fb4d2c, slot +8 of the object at [x20+0x5c90] -- the gfx::System instance,
+# its name string "gfx::System" still in the run47 register dump's x6/x7). The notification loads the system's
+# actor-list base through field [x0+0x58] into x21 and reads the list's entry count through it -- ldr w9,
+# [x21, x9] with x9 the list head offset 0x5610, then the array at [x21+0x5618], its length clamped against the
+# static at [0x7001d76bf8] -- and the never-built title init left that base 0, so the count read faulted at
+# 0x5610 exactly (x21 0 in the dump; host pc f_700123b8f8+0x100 is the mov esi,[r13+0x5610]-style read
+# mov esi,[rbx+r13], r13 = x21's home). The sweep above and below the fault: the mutex step (static
+# [0x7001d66468]) gates itself -- its cbz skips the lock when the static's object is absent -- the loop's bl
+# f_7001236614 and vtable +0xb8 name step run only for entries of the skipped list, and the guest already has a
+# skip-everyone path: the busy-lock branch jumps to the function's own return label L_700123b994, reload block
+# restoring the callee-saved frame. One guard on the null base jumps there -- an un-notified actor is exactly
+# what a never-built system means -- and the blr's caller ignores the result, re-deriving x0 from x19 on its
+# very next instruction (mov x0, x19 at 0x7000fb4d30).
+def _gfx_system_list_guard(gen, a):
+    assert _word(gen, a) == 0xb8696aa9, hex(_word(gen, a))  # ldr w9, [x21, x9] (the fault, x9 = 0x5610)
+    assert _word(gen, a - 4) == 0xf945fd08, hex(_word(gen, a - 4))  # ldr x8, [x8, #0xbf8] (the length static)
+    assert _word(gen, a + 4) == 0xf96b0eaa, hex(_word(gen, a + 4))  # ldr x10, [x21, #0x5618] (the array)
+    return ('{ x21 = c->x[21]; if (!x21) goto L_700123b994; }'
+            '  { uint64_t ea = x21 + c->x[9]; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }'
+            f'  /* {a:#x}: ldr w9, [x21, x9] (gfx::System notify: actor list, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1226,6 +1250,7 @@ PATCHES = {
     'actor_param_ctx_guard': _actor_param_ctx_guard,
     'param_list_xfer_guard': _param_list_xfer_guard,
     'param_subsys_guard': _param_subsys_guard,
+    'gfx_system_list_guard': _gfx_system_list_guard,
 }
 
 

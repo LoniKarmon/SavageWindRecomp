@@ -1198,6 +1198,26 @@ def _subsys_consume_guard(gen, a):
             f'  /* {a:#x}: sub sp, sp, #0xe0 (subsystem consumer: null getter result, guarded) */')
 
 
+# The registry lookup's null registry (game_sites.py registry_lookup_guard, tools/patches.py): run50's fault --
+# the actor init's subsystem initializer f_7001274db4 (actor init's bl 0x7001264050, its x2 = the real block)
+# loads the subsystem registry through field [x2+0x55e8] -- the same never-built field the family-15 guards
+# cover -- and makes four registry lookups with it (bl 0x7000f778dc at 0x7001274df8/0xe70/0xee8/0xf60, the first
+# one faulting): the lookup's first dereference is the entry count ldrsw x8, [x0, #0x38], then the entry array
+# at [x0+0x40] -- 0x38 faulted exactly with the dump's x0 0. The guest's own empty-registry answer is the -1
+# its count==0 branch returns at 0x7000f779b0 (mov w19, #-1; mov w0, w19 restores the frame and rets), and
+# every caller family gates on it: all four of f_7001274db4's lookups follow with cmn w0, #1 / b.eq and skip
+# the found-object stores through [x21+0x40] on -1, and its tail cbz skips the flag step (w20 = 0 in the
+# dump) -- so a null registry is exactly an empty one, answered from the lookup's entry. The guard returns
+# before the frame (the guest's own sub/add pair nets zero, c->sp untouched) with w0 = -1; the other 18 call
+# sites include the actor init's two guarded loads (families 15's goto skips their calls entirely) and the
+# title/bootup lookups that already run with a real registry (the guard's c->x[0] test is false for them).
+def _registry_lookup_guard(gen, a):
+    assert _word(gen, a) == 0xd10183ff, hex(_word(gen, a))  # sub sp, sp, #0x60 (the frame, pins the entry)
+    assert _word(gen, a + 0x1c) == 0xb9803808, hex(_word(gen, a + 0x1c))  # ldrsw x8, [x0, #0x38] (the fault)
+    return ('{ if (!c->x[0]) { c->x[0] = 0xffffffffull; return; } }'
+            f'  /* {a:#x}: sub sp, sp, #0x60 (registry lookup: null registry, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1323,6 +1343,7 @@ PATCHES = {
     'actor_list_reg_guard_2': _actor_list_reg_guard_2,
     'actor_subsys_ref_guard': _actor_subsys_ref_guard,
     'subsys_consume_guard': _subsys_consume_guard,
+    'registry_lookup_guard': _registry_lookup_guard,
 }
 
 

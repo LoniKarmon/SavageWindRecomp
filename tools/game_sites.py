@@ -473,6 +473,18 @@ SITES = [
     # result (mov w0, #0x6c0 on its very next instruction) and the subsystem simply registers nothing.
     Site('subsys_consume_guard', 'code', 'd10383ff a9097bfd a90a67fa a90b5ff8 a90c57f6 a90d4ff4 '
          '910243fd f9400428', 0),
+    # run50's registry-lookup crash (tools/patches.py registry_lookup_guard): the actor init's tail hands the
+    # never-built subsystem registry (field [x2+#0x55e8] of the real block, null like the fields the family-15
+    # guards cover) to the actor init's subsystem initializer f_7001274db4 (bl 0x7001264050), whose four
+    # registry lookups (bl 0x7000f778dc at 0x7001274df8/0xe70/0xee8/0xf60) fault at [x0+0x38] on the null
+    # registry -- the lookup's first instruction is ldrsw x8, [x0, #0x38] (the entry count), then the array at
+    # [x0+0x40]. The guest's own empty-registry answer is -1: its count==0 branch reaches the return at
+    # 0x7000f779b0 with w0 = #-1, and all four of this family's callers gate on it (cmn w0,#1 b.eq skips the
+    # entry read [x21,#0x40] with the found object's stores). So one guard at the lookup's entry returns -1 on
+    # a null registry -- a null registry is exactly an empty one -- and covers all 18 of the lookup's call
+    # sites (the other families' guarded loads jump past the call before it runs).
+    Site('registry_lookup_guard', 'code', 'd10183ff a9017bfd f90013f9 a9035ff8 a90457f6 a9054ff4 '
+         '910043fd b9803808', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -554,6 +566,9 @@ OPTIONAL_GROUPS = [
     ('subsys_consume_guard',),  # (run49's fault: the subsystem consumer reads its flag word through the null
                                  # getter result for the never-built field [x20+0x51d8] -- return from its
                                  # entry, its caller ignores the result, nothing gets registered)
+    ('registry_lookup_guard',),  # (run50's fault: the registry lookup reads its entry count through the null
+                                 # registry the never-built init left in field [x2+0x55e8] -- return the
+                                 # guest's own empty-registry -1, every caller's not-found branch follows)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -760,6 +775,7 @@ KNOWN = {
         'actor_list_reg_guard_2': 0x70012641f0,
         'actor_subsys_ref_guard': 0x7001264228,
         'subsys_consume_guard': 0x700126daf0,
+        'registry_lookup_guard': 0x7000f778dc,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

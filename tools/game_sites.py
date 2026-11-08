@@ -634,6 +634,24 @@ SITES = [
          '78420d09 7140093f 54000080/ff00001f 7842cc08 7140091f 9a9f0008 b9400900 d65f03c0', 11),
     Site('dir_entry_accessor_guard_5', 'code', 'aa0003e8 78414d09 7140093f 54000100/ff00001f aa0003e8 '
          '78420d09 7140093f 54000080/ff00001f 7842cc08 7140091f 9a9f0008 b9400500 d65f03c0', 11),
+    # run60's zero-size-read family (tools/patches.py fs_read_zero_guard): the accessor guards' answer 0
+    # flows on -- the step f_7000f07ee0 takes the guarded size answer (bl 0x7000f08114 f_700007ead4, the
+    # dump's lr 0x7000f08118) into bl f_7000007c20 (x0 = that answer) and allocates 0 bytes (a null pool
+    # buffer stored to [x19+0xbf8]), then calls bl f_7000f0813c f_700009dbf0 -- its read step: blr a
+    # vtable, bl f_700009b860 seek(offset 0 -- the SDK takes it fine), bl f_700009b77c read(x0 = the file
+    # at [x21+0x2f0], x1 = the null buffer, x2 = 0): the wrapper's success tail (bl 0x700009a97c the SDK
+    # import thunk f_70015a1110 through its GOT slot -- its lift f_700009a93c +0x40, the dump's frame
+    # 700009a980) reaches the SDK's ReadFile, which R_UNLESS(buffer != nullptr) answers 0x2f5e02 --
+    # fs ResultNullptrArgument (module 2, description 6063 -- the run60 svcBreak info print, its api
+    # string 0x7002e0bb62 "ReadFile" in the StoreContext) -- and sead's X macro aborts: "SDK has been
+    # aborted or failed assertion with no message." The sweep: every file read in the step goes through
+    # the wrapper f_700009b77c (its three bl callers: the step f_700009d950 reads its real 0x100 bytes,
+    # f_700009dbf0 is this one, f_700009dcc8 its sibling) and every caller consumes the answer x0 as the
+    # read count with cmp answered, requested -- so the guard answers 0 bytes read, success, when the
+    # request is 0 (a zero-byte read reads nothing; the SDK's null check never runs, and on our machine
+    # the host file's real contents were never at issue -- the assert is client-side, before the IPC).
+    Site('fs_read_zero_guard', 'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd f9400008 aa0303f3 aa0203f4 '
+         'aa0103f5 aa0003f6 f9404108 d63f0100 36000140/ff00001f 9100a2c0', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -750,6 +768,12 @@ OPTIONAL_GROUPS = [
                                     #  extended the family to its four untagged-handle siblings: the tag
                                     #  0x2001 pair (tails +4/+8 -- the run58 fault) and the tag 0x2000
                                     #  pair (tails +4/+8), all answering the same neutral offset 0)
+    ('fs_read_zero_guard',),        # (run60's fault family: the accessor answer 0 sized the step's
+                                    #  allocation to nothing -- a null pool buffer -- and the SDK's
+                                    #  ReadFile R_UNLESS(buffer) answered fs ResultNullptrArgument
+                                    #  (0x2f5e02) which sead's X macro aborted: the wrapper answers 0
+                                    #  bytes read, success, on a zero-size request -- what the callers'
+                                    #  cmp answered, requested already treats as the nothing-read path)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -973,6 +997,7 @@ KNOWN = {
         'dir_entry_accessor_guard_3': 0x700007eb70,
         'dir_entry_accessor_guard_4': 0x700007eacc,
         'dir_entry_accessor_guard_5': 0x700007eb38,
+        'fs_read_zero_guard': 0x700009b77c,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

@@ -1130,7 +1130,10 @@ static void svc_impl(Cpu *c, uint32_t imm, uint64_t pc) {
     }
     case 0x26:  // Break
         if (x[0] & 0x80000000u) { LOG("[kernel] Break notification %llx\n", x[0]); x[0] = R_OK; break; }
-        FATAL("svcBreak(reason=%llx, info=%llx, size=%llx) at %llx\n", x[0], x[1], x[2], pc);
+        {  // nn::diag::Abort carries the failed Result at info when size == 4: print it (post-mortem it is lost)
+            uint32_t v = x[2] == 4 && x[1] >= GUEST_LO && x[1] < GUEST_HI - 4 ? *(const uint32_t *)(uintptr_t)x[1] : 0;
+            FATAL("svcBreak(reason=%llx, info=%llx, size=%llx, value=%x) at %llx\n", x[0], x[1], x[2], v, pc);
+        }
     case 0x27: debug_string(x[0], x[1]); x[0] = R_OK; break;
     case 0x29: {  // GetInfo(_, id0, handle, id1)
         uint32_t id0 = (uint32_t)x[1];

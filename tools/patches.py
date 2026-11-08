@@ -1472,6 +1472,28 @@ def _dir_entry_accessor_guard_5(gen, a):
             f'  /* {a:#x}: ldr w0, [x8, #4] (dir iterator 5: untagged handle, guarded to offset 0) */')
 
 
+# The zero-size read the SDK aborts on (game_sites.py fs_read_zero_guard, tools/patches.py): run60's
+# fault -- the accessor guards' answer 0 flows on: the step f_7000f07ee0 took the guarded size answer
+# (bl 0x7000f08114 f_700007ead4) into bl f_7000007c20 (x0 = the answer) and allocated 0 bytes -- a null
+# pool buffer stored to [x19+0xbf8] -- then its read step f_700009dbf0 seeks 0 (fine) and calls the file
+# wrapper f_700009b77c (x1 = the null buffer, x2 = 0 bytes): the wrapper's vtable Read succeeds (bit0
+# clear), its success path f_700009a93c calls the SDK import thunk f_70015a1110 -- its GOT jump lands in
+# the SDK's ReadFileImpl (the frames f_70025ad4a0 store api string 0x7002e0bb62 "ReadFile", result 0 and
+# the message 0x7002e014e7 into the assert context), which R_UNLESS(buffer != nullptr) answered fs
+# ResultNullptrArgument -- module 2, description 6063 (the svcBreak info print, 0x2f5e02) -- and sead's
+# X macro aborted. The sweep: every file read goes through this wrapper (bl callers f_700009d950 -- the
+# real 0x100-byte save-dir listing, f_700009dbf0 -- the aborting one, f_700009dcc8 -- a sibling), the
+# wrapper's contract answers the read count in x0, and both callers compare count against requested --
+# so the guard answers "read 0 bytes" at the entry when the size is 0: a zero-size read reads nothing,
+# the SDK's null-buffer check never runs, and no host file contents were ever at issue (client-side
+# abort, before the IPC).
+def _fs_read_zero_guard(gen, a):
+    assert _word(gen, a) == 0xa9bd7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x30]! (the frame, entry)
+    assert _word(gen, a + 0x10) == 0xf9400008, hex(_word(gen, a + 0x10))  # ldr x8, [x0] (the vtable)
+    return ('{ if (!c->x[2]) { c->x[0] = 0ull; return; } }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x30]! (IFile Read: zero size, guarded to 0 bytes read) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1614,6 +1636,7 @@ PATCHES = {
     'dir_entry_accessor_guard_3': _dir_entry_accessor_guard_3,
     'dir_entry_accessor_guard_4': _dir_entry_accessor_guard_4,
     'dir_entry_accessor_guard_5': _dir_entry_accessor_guard_5,
+    'fs_read_zero_guard': _fs_read_zero_guard,
 }
 
 

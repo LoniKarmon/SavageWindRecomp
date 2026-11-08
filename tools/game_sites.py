@@ -502,6 +502,24 @@ SITES = [
     # whole record init, exactly what a never-built registry means.
     Site('record_subsys_init_guard', 'code', 'd10583ff a9107bfd a9116ffc a91267fa a9135ff8 a91457f6 '
          'a9154ff4 910403fd 52821f08 aa0203f8 aa0103f6 aa0003f9 8b080000 2a1f03e1 52840002/7f800000', 0),
+    # run52's subsystem-list registration crash family (tools/patches.py subsys_list_guards, two sites): the
+    # actor init's tail registers the actor-list subsystem block at [x19+0xa28] (a real allocation) with its
+    # registrar f_70012354dc (bl 0x70012641a4, its sole caller) -- the block's actor-list base field
+    # [x0+0x58], the same field the gfx::System notify reads through (gfx_system_list_guard), is the null one
+    # the never-built title init left: the registrar's first use stores its resume-callback adr through it,
+    # str x8, [x22, #0x5458] -- the fault 0x5458 (host f_70012354dc+0xf7: mov [rcx+0x5458],rax, rcx =
+    # [r15+0x58]) -- and the sweep of its body found every later chain through the same null base: the
+    # record links [x22+0x5450]/+0x5460/+0x5448, the manager reads [x22+0x5208] twice, and after the four
+    # stores the reload re-reads the base and its consumer faults one step later (ldr w3, [x8, #0x108] at
+    # 0x7001235540, 0x108 waiting), so the guard returns from the entry. The sibling registration step the
+    # tail calls right after (bl 0x70012641ac, f_7001237d00, also its sole caller) loads the same field and
+    # reads the manager's entry through it: ldr x8, [x8, #0x5208] (0x5208 waiting) -- same entry return.
+    # Both callees' results the tail ignores (ldr x0, [x19, #0xa28] on their very next instructions), the
+    # loop's per-entry vtable steps and the after-tail consumers run only through the null base, and the
+    # guarded registry lookups the tail reaches next (actor_list_reg_guard_1/2) already skip on null.
+    Site('subsys_list_init_guard', 'code', 'd10183ff a9017bfd a90267fa a9035ff8 a90457f6 a9054ff4 '
+         '910043fd f9402c16', 0),
+    Site('subsys_list_reg_guard', 'code', 'a9be7bfd a9014ff4 910003fd f9402c08 aa0003f3 f9690508', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -590,6 +608,10 @@ OPTIONAL_GROUPS = [
                                     # never-built lookup left null in the block's own field [x25+0x5d0] --
                                     # return from its entry, the sole caller ignores the result, the whole
                                     # record init is what the null registry means to skip)
+    ('subsys_list_init_guard',   # (run52's fault family: the actor-list subsystem's registrar stores its
+     'subsys_list_reg_guard'),    # resume-callback through the list base the never-built init left null in
+                                  # the real block's field [x0+0x58] -- return from both its entry and the
+                                  # sibling registration step's entry, both callers ignore the results)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -798,6 +820,8 @@ KNOWN = {
         'subsys_consume_guard': 0x700126daf0,
         'registry_lookup_guard': 0x7000f778dc,
         'record_subsys_init_guard': 0x700124fccc,
+        'subsys_list_init_guard': 0x70012354dc,
+        'subsys_list_reg_guard': 0x7001237d00,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

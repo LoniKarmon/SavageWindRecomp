@@ -1242,6 +1242,40 @@ def _record_subsys_init_guard(gen, a):
             f'  /* {a:#x}: sub sp, sp, #0x160 (record subsystem init: null registry base, guarded) */')
 
 
+# The actor-list subsystem's registration steps (game_sites.py's two subsys_list_* sites, tools/patches.py):
+# run52's fault -- the actor init's tail registers the actor-list subsystem block at [x19+0xa28] (a real
+# allocation, the dump's x0 0x72d523ba70) with its registrar f_70012354dc (bl 0x70012641a4, its sole caller).
+# The block's actor-list base field [x0+0x58] -- the field the gfx::System notify also reads its list through
+# (gfx_system_list_guard) -- is the null one the never-built title init left: the registrar's first use
+# stores its resume-callback adr through it, str x8, [x22, #0x5458], faulting at 0x5458 with the dump's x22 0
+# (host f_70012354dc+0xf7: mov QWORD PTR [rcx+0x5458],rax, rcx = [r15+0x58] reloaded from the spilled base).
+# The sweep of the registrar's body found every later chain through the same null base -- the record links
+# [x22+0x5450]/+0x5460/+0x5448, the manager reads [x22+0x5208] twice -- and after the four stores the reload
+# re-reads the base and its consumer faults one deref later (ldr w3, [x8, #0x108] at 0x7001235540, 0x108
+# waiting), then the loop's per-entry vtable steps and f_700123f578 calls all run on entries of the base's
+# list -- so the guard returns from the entry before the frame. The sibling registration step the tail calls
+# right after (bl 0x70012641ac, f_7001237d00, also its sole caller) loads the same field and reads the
+# manager's entry through it: ldr x8, [x8, #0x5208] at +0x14 (0x5208 waiting), then locks the found entry,
+# calls its vtable slot +8 and registers its resume-record slots -- an absent manager list registers nothing,
+# so the same entry return answers it. Both callers ignore the results (the tail reloads ldr x0, [x19,
+# #0xa28] on its very next instructions), and the registry lookups the tail reaches next already skip on
+# null through the guarded loads (actor_list_reg_guard_1/2's guest -1 branches).
+def _subsys_list_init_guard(gen, a):
+    assert _word(gen, a) == 0xd10183ff, hex(_word(gen, a))  # sub sp, sp, #0x60 (the frame, pins the entry)
+    assert _word(gen, a + 0x1c) == 0xf9402c16, hex(_word(gen, a + 0x1c))  # ldr x22, [x0, #0x58] (the base)
+    assert _word(gen, a + 0x30) == 0xf92a2ec8, hex(_word(gen, a + 0x30))  # str x8, [x22, #0x5458] (the fault)
+    return ('{ if (!LD64(c->x[0] + 0x58ull)) return; }'
+            f'  /* {a:#x}: sub sp, sp, #0x60 (actor-list subsystem registrar: null list base, guarded) */')
+
+
+def _subsys_list_reg_guard(gen, a):
+    assert _word(gen, a) == 0xa9be7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x20]! (pins the entry)
+    assert _word(gen, a + 0xc) == 0xf9402c08, hex(_word(gen, a + 0xc))  # ldr x8, [x0, #0x58] (the base)
+    assert _word(gen, a + 0x14) == 0xf9690508, hex(_word(gen, a + 0x14))  # ldr x8, [x8, #0x5208] (the next)
+    return ('{ if (!LD64(c->x[0] + 0x58ull)) return; }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x20]! (actor-list subsystem step 2: null list base, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1369,6 +1403,8 @@ PATCHES = {
     'subsys_consume_guard': _subsys_consume_guard,
     'registry_lookup_guard': _registry_lookup_guard,
     'record_subsys_init_guard': _record_subsys_init_guard,
+    'subsys_list_init_guard': _subsys_list_init_guard,
+    'subsys_list_reg_guard': _subsys_list_reg_guard,
 }
 
 

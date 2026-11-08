@@ -981,6 +981,22 @@ def _debug_menu_reg_guard(frame, pin_off, pin_word, vec):
     return patch
 
 
+# The title's actor creation (game_sites.py uinj_db_guard, tools/patches.py): run38's fault — after the debug-menu
+# cluster was cleared the boot reached f_7000fb272c's actor-build step, which asks the thunk at f_7000f9e5ec for the
+# uinj actor database: it loads the scene world's +0x28 member, adds a fixed 0x4e0, and tail-branches (b, not bl) to
+# f_7000ff3520, whose first load reads the record count through base+0x54158. On this machine the never-completed
+# title init never built that member, so it loads null, the add leaves the base at 0x4e0, and the count load faults
+# dereferencing 0x4e0+0x54158 = 0x54638. Guard the member load: with no database return the null straight from the
+# thunk (skipping the tail branch), and the caller -- which only stores the result, never dereferences it (its own
+# constructor path keeps it as the actor's name slot, written, not read) -- carries the null harmlessly. The guard
+# refreshes x8 so the add's fall-through keeps the real database's base intact.
+def _uinj_db_guard(gen, a):
+    assert _word(gen, a) == 0xf9401408, hex(_word(gen, a))  # ldr x8, [x0, #0x28] (the actor-db member)
+    assert _word(gen, a + 4) == 0x91138100, hex(_word(gen, a + 4))  # add x0, x8, #0x4e0 (the record-array base)
+    return ('{ x8 = LD64(c->x[0] + 0x28); c->x[8] = x8; if (!x8) { c->x[0] = 0; return; } }'
+            f'  /* {a:#x}: ldr x8, [x0, #0x28] (actor create: uinj db member, guarded) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1094,6 +1110,7 @@ PATCHES = {
     'debug_menu_reg_278_guard': _debug_menu_reg_guard(0x40, 0x18, 0x9109e000, '+0x278'),
     'debug_menu_reg_278c_guard': _debug_menu_reg_guard(0x50, 0x18, 0xb9427808, 'copy +0x278'),
     'debug_menu_reg_278f_guard': _debug_menu_reg_guard(0x40, 0x14, 0xf9414008, 'free +0x280'),
+    'uinj_db_guard': _uinj_db_guard,
 }
 
 

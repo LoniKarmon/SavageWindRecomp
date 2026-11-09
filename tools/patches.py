@@ -1970,6 +1970,29 @@ def _holder_array_init_guard(gen, a):
             ' answers its own null-alloc done 0, the caller ignores x0) */')
 
 
+# The param-table step's dirty virtual call (game_sites.py param_holder_vcall_guard,
+# tools/patches.py): run71 cleared the holder-init family -- the node init answered 0 and the
+# chain kept walking: the step f_7001550dec (the callee the dirty-x19 family's site 1 already
+# taught to take the null name) alloc'd its node through f_7001551ee4 (now whole), then ran its
+# own tail and died at lr 0x7001550e24 on its blr x8 at 0x7001550e20 with FATAL: no function at
+# a90657f6f9002bf7 -- the dump's x8 exactly: the step's object field [x19, #0x30] answered
+# 0x7001d04098, a raw .rodata cell -- and the never-built subsystem left a code address in its
+# first word, so the "vtable" slot [x8, #0x10] read two raw instruction words (0xa90657f6
+# f9002bf7). The loads themselves never fault; the lifted c->pc = x8; rt_dispatch(c) dispatch
+# found no function there. The guard skips the dispatch when the target is off the guest map
+# and answers 0 -- the caller's next lifted line reloads x0 from [x19, #0x40] and ignores the
+# answer -- and dispatches untouched on a real built object's on-map vtable slot.
+def _param_holder_vcall_guard(gen, a):
+    assert _word(gen, a) == 0xd63f0100, hex(_word(gen, a))  # blr x8 (the virtual step)
+    assert _word(gen, a - 4) == 0xf9400908, hex(_word(gen, a - 4))  # ldr x8, [x8, #0x10] (the slot)
+    assert _word(gen, a - 8) == 0xf9400008, hex(_word(gen, a - 8))  # ldr x8, [x0] (the "vptr")
+    return ('{ if (x8 - 0x7000000000ull >= 0x320000000ull) x0 = 0ull;'
+            ' else { c->pc = x8; x30 = 0x7001550e24ull; c->x[0] = x0; c->x[8] = x8;'
+            ' c->x[30] = x30; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x30 = c->x[30]; } }'
+            f'  /* {a:#x}: blr x8 (dirty "vtable" slot -- two raw instruction words off the'
+            ' guest map -- the dispatch skips to the ignored 0 the caller reloads) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -2152,6 +2175,7 @@ PATCHES = {
     'framework_x19_load_guard_16': _framework_x19_load_guard_16,
     'framework_x19_load_guard_17': _framework_x19_load_guard_17,
     'holder_array_init_guard': _holder_array_init_guard,
+    'param_holder_vcall_guard': _param_holder_vcall_guard,
 }
 
 

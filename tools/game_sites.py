@@ -853,6 +853,16 @@ SITES = [
     # of its own failed singleton alloc (its cbz x0 tail): the caller ignores x0 after the bl, and
     # with a real built subsystem the on-map pointer re-executes the frame untouched.
     Site('holder_array_init_guard', 'code', 'd10183ff a9017bfd a90267fa a9035ff8 a90457f6 a9054ff4 910043fd aa0003f3 94000000/fc000000 b4000000/ff00001f aa1303f5', 0),
+    # The param-table step's dirty virtual call (tools/patches.py param_holder_vcall_guard):
+    # run71 cleared the holder-init family and died at lr 0x7001550e24 on the step f_7001550dec's
+    # blr x8 at 0x7001550e20 -- FATAL: no function at a90657f6f9002bf7, the dump's x8 exactly:
+    # the object field [x19, #0x30] answered 0x7001d04098, a raw .rodata cell, not a built
+    # object -- its vptr [x0] is a code address and the slot [x8, #0x10] is two raw instruction
+    # words, so the lifted c->pc = x8; rt_dispatch(c) dispatch found no function there (the
+    # loads themselves never fault). The guard skips the dispatch when the target is off the
+    # guest map and answers 0 -- the caller's next line reloads x0 from [x19, #0x40], so the
+    # answer is ignored -- and dispatches untouched on a real built object's on-map slot.
+    Site('param_holder_vcall_guard', 'code', 'd63f0100 f9402260 aa1503e1 94000000/fc000000 f9401e60 aa1503e1 94000000/fc000000 f9404a60', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -1028,6 +1038,11 @@ OPTIONAL_GROUPS = [
                                         #  array pointer is the {4,"h"} ParamHolder cell -- the
                                         #  node init's whole walk runs on it, the step returns
                                         #  its own null-alloc answer 0, the caller ignores x0)
+    ('param_holder_vcall_guard',),      # (run71's fault family: the step's [x19, #0x30] object
+                                        #  field is a raw .rodata cell -- its "vtable" slot is
+                                        #  two instruction words off the guest map -- the
+                                        #  virtual dispatch skips to the ignored 0 the caller
+                                        #  reloads from [x19, #0x40] right after)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1291,6 +1306,7 @@ KNOWN = {
         'framework_x19_load_guard_16': 0x700127ef08,
         'framework_x19_load_guard_17': 0x700127ef18,
         'holder_array_init_guard': 0x700155210c,
+        'param_holder_vcall_guard': 0x7001550e20,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

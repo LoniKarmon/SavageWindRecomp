@@ -1993,6 +1993,56 @@ def _param_holder_vcall_guard(gen, a):
             ' guest map -- the dispatch skips to the ignored 0 the caller reloads) */')
 
 
+# The param step's dirty-field callees (game_sites.py entry_field_lookup_guard/_2,
+# entry_config_fill_guard, tools/patches.py): run72 cleared the dirty-"vtable" family -- the
+# virtual step skipped to its ignored 0 and the step f_7001550dec ran past it into its tail --
+# and died with signal 11 accessing 0xbe912318: the dump's host pc f_7001394864+119 objdump-
+# pins the result store str x0, [x20, #0x20] at 0x70013948c0 (the dump's lr exactly) into the
+# param table's entry field -- the dump's x20 = 0xbe9122f8, the step's dirty [x19, #0x40]
+# object field (another raw cell of the never-built subsystem, this one holding utf8 bytes)
+# read as the entry. The virtual [x21, #0x18] step and the string lookup f_70013959a4 inside
+# ran fine (the dump's x0 = 0, the answer reused); only the store into the raw cell faulted.
+# The sweep of the step's tail shows the same story at its two remaining dirty-field callees:
+# f_7001382998 (0x7001550e44, x0 = the [x19, #0x90] field, its only store str x0, [x19, #0x28]
+# faults the same way) and f_700138e5b8 (0x7001550e54, x0 = the [x19, #0x60] base + 0x48, a
+# huge config fill whose first store str w0, [x19, #0x68] faults and whose ~20 further loads
+# and stores all hang off that base); f_700135e048 (0x7001550e38) is a bare ret, no guard.
+# All three guard at entry with the answer 0 for an object off the guest map -- every caller
+# reloads x0 or x8 from its own table right after the bl (and the cbz x20 branch the step's
+# null x2 already takes skips the rest) -- and with a real built subsystem the on-map objects
+# re-execute the spill frame untouched.
+def _entry_field_lookup_guard(gen, a):
+    assert _word(gen, a) == 0xa9bd7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x30]! (the frame, entry)
+    assert _word(gen, a + 0x20) == 0xaa0003f4, hex(_word(gen, a + 0x20))  # mov x20, x0 (the entry)
+    assert _word(gen, a + 0x5c) == 0xf9001280, hex(_word(gen, a + 0x5c))  # str x0, [x20, #0x20] (the fault)
+    return ('{ if (x0 - 0x7000000000ull >= 0x320000000ull) { c->x[0] = 0ull; return; }'
+            ' { uint64_t ea = sp_ - 48; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); sp_ = ea; } }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x30]! (lookup result store: the entry is the'
+            ' dirty [x19, #0x40] raw cell -- the step returns the lookup\'s ignored 0, the'
+            ' caller reloads x0 from [x19, #0x38] right after) */')
+
+
+def _entry_field_lookup_guard_2(gen, a):
+    assert _word(gen, a) == 0xa9be7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x20]! (the frame, entry)
+    assert _word(gen, a + 0xc) == 0xaa0003f3, hex(_word(gen, a + 0xc))  # mov x19, x0 (the entry)
+    assert _word(gen, a + 0x28) == 0xf9001660, hex(_word(gen, a + 0x28))  # str x0, [x19, #0x28] (the sibling store)
+    return ('{ if (x0 - 0x7000000000ull >= 0x320000000ull) { c->x[0] = 0ull; return; }'
+            ' { uint64_t ea = sp_ - 32; ST64(ea, x29); ST64(ea + 8, x30); sp_ = ea; } }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x20]! (lookup result store sibling: the entry'
+            ' is the dirty [x19, #0x90] raw cell, the same ignored-0 entry return) */')
+
+
+def _entry_config_fill_guard(gen, a):
+    assert _word(gen, a) == 0xa9ba7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x60]! (the frame, entry)
+    assert _word(gen, a + 0x24) == 0xaa0003f3, hex(_word(gen, a + 0x24))  # mov x19, x0 (the base)
+    assert _word(gen, a + 0x40) == 0xb9006a60, hex(_word(gen, a + 0x40))  # str w0, [x19, #0x68] (the first store)
+    return ('{ if (x0 - 0x7000000000ull >= 0x320000000ull) { c->x[0] = 0ull; return; }'
+            ' { uint64_t ea = sp_ - 96; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); sp_ = ea; } }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x60]! (config fill: the base is the dirty'
+            ' [x19, #0x60] raw cell + 0x48 -- every one of its ~20 loads and stores hangs off'
+            ' it, the step returns its ignored 0 to the caller\'s own cbz x20 tail) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -2176,6 +2226,9 @@ PATCHES = {
     'framework_x19_load_guard_17': _framework_x19_load_guard_17,
     'holder_array_init_guard': _holder_array_init_guard,
     'param_holder_vcall_guard': _param_holder_vcall_guard,
+    'entry_field_lookup_guard': _entry_field_lookup_guard,
+    'entry_field_lookup_guard_2': _entry_field_lookup_guard_2,
+    'entry_config_fill_guard': _entry_config_fill_guard,
 }
 
 

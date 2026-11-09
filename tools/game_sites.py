@@ -863,6 +863,25 @@ SITES = [
     # guest map and answers 0 -- the caller's next line reloads x0 from [x19, #0x40], so the
     # answer is ignored -- and dispatches untouched on a real built object's on-map slot.
     Site('param_holder_vcall_guard', 'code', 'd63f0100 f9402260 aa1503e1 94000000/fc000000 f9401e60 aa1503e1 94000000/fc000000 f9404a60', 0),
+    # The param step's dirty-field callees (tools/patches.py entry_field_lookup_guard/_2,
+    # entry_config_fill_guard): run72 cleared the dirty-"vtable" family -- the virtual step
+    # skipped to its ignored 0 and the step f_7001550dec ran past it -- and died with signal 11
+    # accessing 0xbe912318: the dump's host pc f_7001394864+119 objdump-pins the result store
+    # str x0, [x20, #0x20] at 0x70013948c0 (the dump's lr exactly) into the param table's entry
+    # field -- the dump's x20 = 0xbe9122f8, the step's dirty [x19, #0x40] object field (another
+    # raw cell, this one holding utf8 bytes) read as the entry. The string lookup answered the
+    # dump's x0 = 0 (fine), only the store into the raw cell faulted. The sweep of the step's
+    # tail shows the same story at its two remaining dirty-field callees: f_7001382998 (called
+    # at 0x7001550e44 with x0 = the [x19, #0x90] field, its only store str x0, [x19, #0x28]
+    # faults on a raw cell) and f_700138e5b8 (called at 0x7001550e54 with x0 = the
+    # [x19, #0x60] base + 0x48, a huge config fill whose first str w0, [x19, #0x68] faults);
+    # f_700135e048 (0x7001550e38) is a bare ret. All three guard at entry with the answer 0
+    # for an object off the guest map -- every caller reloads x0 or x8 right after the bl and
+    # the cbz x20 branch the never-built step's null x2 already takes skips the rest -- and
+    # with a real built subsystem the on-map objects re-execute the spill frame untouched.
+    Site('entry_field_lookup_guard',    'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd 90000008/9f00001f 90000015/9f00001f 910002b5/ffc003ff f9400108/ffc003ff', 0),
+    Site('entry_field_lookup_guard_2',  'code', 'a9be7bfd f9000bf3 910003fd aa0003f3 90000000/9f00001f 91000000/ffc003ff aa1f03e2 aa1f03e3', 0),
+    Site('entry_config_fill_guard',     'code', 'a9ba7bfd a9016ffc 910003fd a90267fa a9035ff8 a90457f6 a9054ff4 d11903ff', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -1043,6 +1062,12 @@ OPTIONAL_GROUPS = [
                                         #  two instruction words off the guest map -- the
                                         #  virtual dispatch skips to the ignored 0 the caller
                                         #  reloads from [x19, #0x40] right after)
+    ('entry_field_lookup_guard',        # (run72's fault family: the step's three dirty-field
+     'entry_field_lookup_guard_2',      #  callees -- the string lookup storing its result into
+     'entry_config_fill_guard'),        #  the raw cell entry, its str-to-[x19,#0x28] sibling,
+                                        #  and the config fill whose base sub-object hangs off
+                                        #  the raw [x19, #0x60] cell -- all return at entry
+                                        #  answering the ignored 0 their callers reload)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1307,6 +1332,9 @@ KNOWN = {
         'framework_x19_load_guard_17': 0x700127ef18,
         'holder_array_init_guard': 0x700155210c,
         'param_holder_vcall_guard': 0x7001550e20,
+        'entry_field_lookup_guard': 0x7001394864,
+        'entry_field_lookup_guard_2': 0x7001382998,
+        'entry_config_fill_guard': 0x700138e5b8,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

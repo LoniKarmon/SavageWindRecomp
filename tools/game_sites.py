@@ -738,6 +738,29 @@ SITES = [
          '7200001f aa1603e0 9a9f12e8 f9400508 91004109 f9010688', 0),
     Site('load_balancer_handle_guard', 'code', '97f41a9c f94006e1', 1),
     Site('load_balancer_handle_guard_2', 'code', '97f41a85 f94006c1', 1),
+    # run66's never-built config path entries (tools/patches.py physics_path_scan_guard and
+    # sead_heap_alloc_guard): boot passed the LoadBalancer guards (family #29 closed -- run66's
+    # x6/x7 carry "Ecosyste" + "m/LoadBa" again, the deepest route yet: the registrar
+    # f_70014d97f0's ~80 param registrations ran and reached the physics step's tail) -- and died
+    # on signal 11 accessing 0x823a89c29e at the dump's host pc f_7000eeaff8+3a7, which objdump
+    # pins to the step's string scan cmpb $0x0,(%rdx) with %rdx = 0xa0(%rbx): the guest
+    # ldrb w8, [x20, x21] at 0x7000eeb10c (the dump's x19 = 0xffffffff is the mov w19, #-1 right
+    # before it at 0x7000eeb104, x20 = the dump's 0x823a89c29e exactly). The family #28 count-0
+    # guard held -- the step set its parsed flag and moved on -- but the step then walks the same
+    # never-built config struct's path-entry array [x20, x27) converting every entry through the
+    # sead heap: x20 = the dirty field-sum base and x27 = its end are both off the guest map (the
+    # dump's 0x823a89c29e and 0x82f68b1c1f), so the scan's first byte read faults. The sweep's
+    # neutrals are the step's own exits: a base off the guest map means there are no entries at
+    # all -- exactly the shape the entry-count cbz (cbz w9, #0x7000eeb228) takes and the loop's
+    # own "array exhausted" done tail (goto L_7000eeb214: reload the config from [sp, #8], set the
+    # string-parsed flag bit 2, restore the spills and return, the caller's post-step virtual call
+    # carrying on); and inside the loop the heap manager -- [0x7001d6eab8] of the framework's
+    # never-constructed page (the dump's x13/x12/x10/x11 are its crc32 tables, dirty) -- feeds the
+    # alloc bl and the two registration blrs through a bare ldr x8, [x8]: a global off the guest
+    # map means there is no heap to allocate from, so the step answers the same done tail (the
+    # entries converted up to there are still marked parsed).
+    Site('physics_path_scan_guard', 'code', 'aa1f03f5 38756a88', 1),
+    Site('sead_heap_alloc_guard', 'code', 'f9455d08 531f7afa 52800102 f9400108', 3),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -878,6 +901,10 @@ OPTIONAL_GROUPS = [
      'load_balancer_handle_guard_2'),#  neutrals: an absent entry skips the handoff block (the
                                     #  existing no-entry tail), an absent handle answers 0 to the
                                     #  null-tolerant setter)
+    ('physics_path_scan_guard',     # (run66's fault family: the LoadBalancer step's path-entry
+     'sead_heap_alloc_guard'),      #  array base and the sead heap manager are both never built
+                                    #  -- off the guest map -- so the step answers its own
+                                    #  "entries converted" done tail (parsed flag bit 2 set))
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1113,6 +1140,8 @@ KNOWN = {
         'load_balancer_entry_guard_2': 0x7001185768,
         'load_balancer_handle_guard': 0x70011857e4,
         'load_balancer_handle_guard_2': 0x7001185840,
+        'physics_path_scan_guard': 0x7000eeb10c,
+        'sead_heap_alloc_guard': 0x7000eeb154,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

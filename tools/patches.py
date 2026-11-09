@@ -1646,6 +1646,40 @@ def _load_balancer_handle_guard_2(gen, a):
             ' leaves x22 0 here, the setter stores {0,0}) */')
 
 
+# The LoadBalancer step's never-built path entries (game_sites.py physics_path_scan_guard /
+# sead_heap_alloc_guard, tools/patches.py): run66 went deepest yet -- the count-0 and
+# LoadBalancer guards held and the physics step set its parsed flag -- and died with signal 11
+# accessing 0x823a89c29e at the dump's host pc f_7000eeaff8+3a7: objdump pins that to the string
+# scan's cmpb $0x0,(%rdx), the guest ldrb w8, [x20, x21] at 0x7000eeb10c (the dump's x19 =
+# 0xffffffff is the mov w19, #-1 right before it, x20 = the dump's exact 0x823a89c29e). The step
+# walks the never-built config struct's path-entry array [x20, x27) converting every entry with
+# the sead heap -- and both the base (the dump's x20) and the end (x27 = 0x82f68b1c1f) are dirty
+# field-sums off the guest map, so the scan's first byte read faults; the sweep's second site is
+# the heap manager itself: [0x7001d6eab8] of the framework's never-constructed page (the dump's
+# dirty crc32-table registers), bare-dereferenced by ldr x8, [x8] at 0x7000eeb154 feeding the
+# alloc bl and the registration blrs. The step's own exits prove the neutral for both: a base (or
+# heap) off the guest map means nothing to convert -- exactly the entry-count cbz's skip shape --
+# so both take the loop's existing done tail (goto L_7000eeb214: reload the config from [sp, #8],
+# set the string-parsed flag bit 2, restore the spills and return; the caller's post-step virtual
+# call carries on with its valid config struct). With a real loaded config both re-execute.
+def _physics_path_scan_guard(gen, a):
+    assert _word(gen, a) == 0x38756a88, hex(_word(gen, a))  # ldrb w8, [x20, x21] (the scan byte)
+    assert _word(gen, a - 4) == 0xaa1f03f5, hex(_word(gen, a - 4))  # mov x21, xzr (the scan index)
+    return ('{ if (c->x[20] - 0x7000000000ull >= 0x320000000ull) goto L_7000eeb214;'
+            ' uint64_t ea = c->x[20] + x21; uint64_t v = LD8(ea); x8 = (uint64_t)(v); }'
+            f'  /* {a:#x}: ldrb w8, [x20, x21] (path entries: array base off the guest map,'
+            " guarded to the step's done tail) */")
+
+
+def _sead_heap_alloc_guard(gen, a):
+    assert _word(gen, a) == 0xf9400108, hex(_word(gen, a))  # ldr x8, [x8] (the heap manager)
+    assert _word(gen, a - 0xc) == 0xf9455d08, hex(_word(gen, a - 0xc))  # ldr x8, [x8, #0xab8]
+    return ('{ if (x8 - 0x7000000000ull >= 0x320000000ull) goto L_7000eeb214;'
+            ' uint64_t ea = x8 + 0x0ull; uint64_t v = LD64(ea); x8 = (uint64_t)(v); }'
+            f'  /* {a:#x}: ldr x8, [x8] (path entries: sead heap never built,'
+            " guarded to the step's done tail) */")
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1800,6 +1834,8 @@ PATCHES = {
     'load_balancer_entry_guard_2': _load_balancer_entry_guard_2,
     'load_balancer_handle_guard': _load_balancer_handle_guard,
     'load_balancer_handle_guard_2': _load_balancer_handle_guard_2,
+    'physics_path_scan_guard': _physics_path_scan_guard,
+    'sead_heap_alloc_guard': _sead_heap_alloc_guard,
 }
 
 

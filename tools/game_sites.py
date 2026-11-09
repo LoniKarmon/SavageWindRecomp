@@ -711,6 +711,33 @@ SITES = [
     Site('framework_swap_guard', 'code', 'd342fc48 7100051f 540002ab/ff00001f a9bd7bfd f9000bf5 '
          'a9024ff4 910003fd b0007529 2a2003e8 f944b129', 0),
     Site('physics_cfg_entry_guard', 'code', 'f9400261 b9402c38 34000018/ff00001f', 1),
+    # run65's never-loaded sub-object family (tools/patches.py load_balancer_entry_guard and
+    # load_balancer_handle_guard): boot passed the physics-config guards (family #28 closed -- the
+    # dump's last RomFS read is now Actor/ActorInfo.product.sbyml) and died on signal 11 accessing 0
+    # at the dump's host pc f_70011855b0+42e: the Ecosystem/LoadBalancer init step (its registers
+    # carry the path string "Ecosystem/LoadBalancer.beco"), called from the framework step
+    # f_700127d4d0 (the dump's lr 7001185724 pins the exact instruction: ldr x8, [x23] -- the vtable
+    # load of a looked-up sub-object, dump x23 = 0). The step asks the thunk f_700155dd2c five times
+    # through its life for five sub-objects -- the ready probe f_700155dd60 checks the path's flag
+    # byte [x0+8] bit 1 and its subsystem pointer [x0+0x10], answers [[x0+0x10]+0x38] or 0 when the
+    # path was never loaded -- and on our machine the second path answers 0 (its package was never
+    # read). The sweep enumerated every dereference of those answers in the step: sites 1-3 (loads
+    # at 0x70011856e0, 0x7001185724 -- the fault -- 0x7001185768) deref the entry unconditionally
+    # (vtable + slot-0 blr + [csel+8] handle read + three field stores); sites 4 and 5 carry the
+    # game's own null guards (cbz x22 -> L_70011857d4 and cbz x21 -> L_700118589c -> x22 = 0) but
+    # still read [x23+8] / [x22+8] before the handle setter f_7000e8aefc, which is null-tolerant
+    # itself (cbz x1 -> store {0,0}) -- those two loads fault next at 0x8 and 0x8 if left alone.
+    # The game's own null paths prove the right neutral answers: an absent entry SKIPS the handoff
+    # block (goto L_70011857d4, the existing "no entry" tail: alloc the handle cell, store {0,0},
+    # run the later init) -- the same shape a real hardware "not found" would take -- and an absent
+    # handle answers 0 into the setter (a null entry has no handle at +8). Site 3's pattern needs
+    # the stp [x20,#0x208] tail (the bare 8-word shape also matches f_70012cf130).
+    Site('load_balancer_entry_guard', 'code', 'f94002e8 aa0003e1 aa1703e0 f9400108 d63f0100 7200001f '
+         'aa1903e0 9a9f12e8', 0),
+    Site('load_balancer_entry_guard_2', 'code', 'f94002e8 aa0003e1 aa1703e0 f9400108 d63f0100 '
+         '7200001f aa1603e0 9a9f12e8 f9400508 91004109 f9010688', 0),
+    Site('load_balancer_handle_guard', 'code', '97f41a9c f94006e1', 1),
+    Site('load_balancer_handle_guard_2', 'code', '97f41a85 f94006c1', 1),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -845,6 +872,12 @@ OPTIONAL_GROUPS = [
                                     #  dump's 0x6e0bebe98 and 0x7af992ff12): the helper answers its
                                     #  own "nothing converted" early return, the step its count-0
                                     #  tail -- the parsed flag still gets set, the entry list runs)
+    ('load_balancer_entry_guard',   # (run65's fault family: the Ecosystem/LoadBalancer step's
+     'load_balancer_entry_guard_2', #  sub-object lookups answer 0 for the paths never loaded on
+     'load_balancer_handle_guard',  #  our machine -- the game's own "no entry" paths prove the
+     'load_balancer_handle_guard_2'),#  neutrals: an absent entry skips the handoff block (the
+                                    #  existing no-entry tail), an absent handle answers 0 to the
+                                    #  null-tolerant setter)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1076,6 +1109,10 @@ KNOWN = {
         'fs_state_query_guard_2': 0x700007e3e0,
         'framework_swap_guard': 0x7000ec9990,
         'physics_cfg_entry_guard': 0x7000eeb0a4,
+        'load_balancer_entry_guard': 0x7001185724,
+        'load_balancer_entry_guard_2': 0x7001185768,
+        'load_balancer_handle_guard': 0x70011857e4,
+        'load_balancer_handle_guard_2': 0x7001185840,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

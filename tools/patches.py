@@ -1599,6 +1599,53 @@ def _physics_cfg_entry_guard(gen, a):
             ' guarded to the count-0 tail) */')
 
 
+# The Ecosystem/LoadBalancer step's never-loaded sub-objects (game_sites.py
+# load_balancer_entry_guard / load_balancer_handle_guard, tools/patches.py): run65's fault -- the
+# physics-config guards held (family #28 closed, boot now reaches Actor/ActorInfo.product.sbyml) --
+# signal 11 accessing 0 with the dump's lr 7001185724 pinning ldr x8, [x23], the vtable load of the
+# second sub-object the step looks up through the thunk f_700155dd2c: its ready probe f_700155dd60
+# checks the path's flag byte and subsystem pointer and answers 0 when the path was never loaded --
+# and on our machine the second path is exactly that. The step derefs the answer unguarded (its
+# first two vtable loads and the third block's too; blocks 4 and 5 carry the game's own cbz/csel
+# guards but still read the entry's handle at [x23+8] / [x22+8] for the handle setter). The game's
+# own no-entry path (cbz x22 -> L_70011857d4 with x23 = 0, and cbz x21 -> L_700118589c -> x22 = 0 ->
+# L_7001185830) proves both neutrals: an absent entry skips its handoff block by falling into the
+# shared alloc tail (goto L_70011857d4, the existing label -- alloc the handle cell, store the
+# handle the next guard supplies, carry on), and an absent entry has no handle to read, so the two
+# handle loads answer 0, which the null-tolerant setter f_7000e8aefc (cbz x1 -> store {0,0}) takes
+# as its own "no handle" state. Blocks whose entry the ready probe did answer for (the first, which
+# run65 proved loaded) re-execute their vtable load untouched.
+def _load_balancer_entry_guard(gen, a):
+    assert _word(gen, a) == 0xf94002e8, hex(_word(gen, a))  # ldr x8, [x23] (the entry's vtable, block 2)
+    assert _word(gen, a + 4) == 0xaa0003e1, hex(_word(gen, a + 4))  # mov x1, x0 (the singleton)
+    return ('{ if (!c->x[23]) goto L_70011857d4;'
+            ' uint64_t ea = c->x[23] + 0x0ull; uint64_t v = LD64(ea); x8 = (uint64_t)(v); }'
+            f'  /* {a:#x}: ldr x8, [x23] (LoadBalancer step: sub-object never loaded, guarded to'
+            " the step's no-entry tail) */")
+
+
+def _load_balancer_entry_guard_2(gen, a):
+    assert _word(gen, a) == 0xf94002e8, hex(_word(gen, a))  # ldr x8, [x23] (the entry's vtable, block 3)
+    assert _word(gen, a + 4) == 0xaa0003e1, hex(_word(gen, a + 4))  # mov x1, x0 (the singleton)
+    return ('{ if (!c->x[23]) goto L_70011857d4;'
+            ' uint64_t ea = c->x[23] + 0x0ull; uint64_t v = LD64(ea); x8 = (uint64_t)(v); }'
+            f'  /* {a:#x}: ldr x8, [x23] (LoadBalancer step: same, the third block pre-empted) */')
+
+
+def _load_balancer_handle_guard(gen, a):
+    assert _word(gen, a) == 0xf94006e1, hex(_word(gen, a))  # ldr x1, [x23, #8] (the entry's handle)
+    return ('{ c->x[1] = c->x[23] ? LD64(c->x[23] + 0x8ull) : 0ull; }'
+            f'  /* {a:#x}: ldr x1, [x23, #8] (LoadBalancer step: an absent entry has no handle,'
+            ' the setter stores {0,0}) */')
+
+
+def _load_balancer_handle_guard_2(gen, a):
+    assert _word(gen, a) == 0xf94006c1, hex(_word(gen, a))  # ldr x1, [x22, #8] (the entry's handle)
+    return ('{ c->x[1] = c->x[22] ? LD64(c->x[22] + 0x8ull) : 0ull; }'
+            f'  /* {a:#x}: ldr x1, [x22, #8] (LoadBalancer step: the game\'s own no-entry path'
+            ' leaves x22 0 here, the setter stores {0,0}) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1749,6 +1796,10 @@ PATCHES = {
     'fs_state_query_guard_2': _fs_state_query_guard_2,
     'framework_swap_guard': _framework_swap_guard,
     'physics_cfg_entry_guard': _physics_cfg_entry_guard,
+    'load_balancer_entry_guard': _load_balancer_entry_guard,
+    'load_balancer_entry_guard_2': _load_balancer_entry_guard_2,
+    'load_balancer_handle_guard': _load_balancer_handle_guard,
+    'load_balancer_handle_guard_2': _load_balancer_handle_guard_2,
 }
 
 

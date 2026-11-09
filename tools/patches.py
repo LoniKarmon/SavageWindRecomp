@@ -2072,6 +2072,34 @@ def _param_delegate_invoke_guard(gen, a):
             ' changed 0 so the tbz takes the step\'s return; a built delegate re-invokes) */')
 
 
+# The step tail's ready-flag helper on the raw field (game_sites.py entry_ready_flag_guard,
+# tools/patches.py): run74 cleared the unbound-delegate family -- the sub-step's invoke skipped
+# to its nothing-changed 0, the sub-step returned through its own ret, and the step
+# f_7001550dec reached its LAST tail branch for the first time: its epilogue restored the
+# framework step's dirty x19 (the {1,"prod"} ParamHolder cell -- the #33 guards load-skip
+# reads but never scrub x19 itself), and b #0x7001557a08 at 0x7001550ebc carried x0 = the
+# never-written [object, #0x2a0] field, the raw word 1, into the ready-flag helper -- and died
+# with signal 11 accessing 0x9 at the entry ldrb w8, [x0, #8] (the dump: x0 = 1,
+# x19 = 0x646f727000000001, lr = the framework step's 0x700127ec98, the thunk's return
+# address). The helper reads its object's ready-flag byte at +8, returns when already set,
+# else probes the (null) settings singleton and its own null answer skips both flag stores.
+# The guard returns at entry with the neutral 0 for an object off the guest map -- the
+# framework step overwrites x0 and x8 with its next loads (the #33 audit: site 1's consumer
+# reassigns both before use), so the tail's ignored answer cannot mislead -- and the real
+# Switch's built ready object (or null, whose cbz the never-built world never reaches here)
+# re-probes the flag byte untouched.
+def _entry_ready_flag_guard(gen, a):
+    assert _word(gen, a) == 0x39402008, hex(_word(gen, a))  # ldrb w8, [x0, #8] (the ready flag, entry)
+    assert _word(gen, a + 4) == 0x34000048, hex(_word(gen, a + 4))  # cbz w8 (the flag test)
+    assert _word(gen, a + 8) == 0xd65f03c0, hex(_word(gen, a + 8))  # ret (the flag-set done path)
+    return ('{ if (x0 - 0x7000000000ull >= 0x320000000ull) { c->x[0] = 0ull; return; }'
+            ' { uint64_t ea = x0 + 0x8ull; uint64_t v = LD8(ea); x8 = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldrb w8, [x0, #8] (ready flag: x0 is the never-written'
+            ' [object, #0x2a0] raw word 1 off the guest map -- the helper returns its own'
+            ' flag-set done ret with the neutral 0 the framework step overwrites; a built'
+            ' ready object re-probes the byte untouched) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -2259,6 +2287,7 @@ PATCHES = {
     'entry_field_lookup_guard_2': _entry_field_lookup_guard_2,
     'entry_config_fill_guard': _entry_config_fill_guard,
     'param_delegate_invoke_guard': _param_delegate_invoke_guard,
+    'entry_ready_flag_guard': _entry_ready_flag_guard,
 }
 
 

@@ -899,6 +899,22 @@ SITES = [
     # With a real Switch's built delegate (state byte 1 or 2) the guarded call dispatches
     # untouched; the byte itself is inside the step's valid object, so the guard's load is safe.
     Site('param_delegate_invoke_guard', 'code', '94000000/fc000000 36000000/fff8001f 94000000/fc000000 b9427268 6b08001f 54000001/ff00001f f9400bf3 a8c27bfd', 0),
+    # The step tail's ready-flag helper on the raw field (tools/patches.py
+    # entry_ready_flag_guard): run74 cleared the unbound-delegate family -- the sub-step's
+    # invoke skipped to its nothing-changed 0, the sub-step returned, and the step f_7001550dec
+    # reached its LAST tail for the first time: after its epilogue restored the framework
+    # step's dirty x19 (the {1,"prod"} ParamHolder cell -- the #33 guards load-skip reads but
+    # never scrub x19 itself) it tail-branches b #0x7001557a08 at 0x7001550ebc carrying
+    # x0 = the never-written [object, #0x2a0] field, the raw word 1 -- and died with signal 11
+    # accessing 0x9 at the helper's entry ldrb w8, [x0, #8] (the dump: x0 = 1, x19 =
+    # 0x646f727000000001, lr = the framework step's 0x700127ec98, the thunk's return exactly).
+    # On a real Switch that field is the built ready object (or null, whose cbz branch the
+    # never-built world already took its way through) and the helper returns through its
+    # flag-set early ret when already ready -- the guard returns that same ret with the
+    # neutral 0 the framework step overwrites with its next load (the #33 audit: site 1's
+    # consumer reassigns x0 before use), and dispatches the flag probe untouched when x0 is
+    # on the guest map.
+    Site('entry_ready_flag_guard',      'code', '39402008 34000008/ff00001f d65f03c0 a9be7bfd f9000bf3 910003fd aa0003f3 94000000/fc000000', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -1091,6 +1107,13 @@ OPTIONAL_GROUPS = [
                                         #  svcBreaks ("SDK has been aborted...") -- the guard
                                         #  answers the invoke's own "nothing changed" 0 and
                                         #  skips the call, the next tbz takes the step's ret)
+    ('entry_ready_flag_guard',),        # (run74's fault family: the step's last tail
+                                        #  branch enters the ready-flag helper with x0 =
+                                        #  the never-written [object, #0x2a0] raw word 1 --
+                                        #  the entry's flag probe faults at 0x9 -- the
+                                        #  guard returns the helper's own flag-set early
+                                        #  ret with the ignored 0 the framework step
+                                        #  overwrites with its next load)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1359,6 +1382,7 @@ KNOWN = {
         'entry_field_lookup_guard_2': 0x7001382998,
         'entry_config_fill_guard': 0x700138e5b8,
         'param_delegate_invoke_guard': 0x7001550ee4,
+        'entry_ready_flag_guard': 0x7001557a08,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

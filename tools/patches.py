@@ -1494,6 +1494,26 @@ def _fs_read_zero_guard(gen, a):
             f'  /* {a:#x}: stp x29, x30, [sp, #-0x30]! (IFile Read: zero size, guarded to 0 bytes read) */')
 
 
+# The deeper null-buffer read the SDK aborts on (game_sites.py fs_read_null_buffer_guard, tools/patches.py):
+# run61's fault -- the wrapper f_700009b77c's zero-size guard took its request, but the step f_7000f07ee0's
+# read went on through the wrapper's success tail (b 0x700009b7ec into the impl f_700009a93c): the impl's
+# SDK ReadFile x1 is not the caller's buffer argument but the object's own buffer field (ldr x1, [x20, #8],
+# the lift +0x28), run61's request carried a nonzero size (the accessor guards answered 0, the step
+# allocated 0, the pool handed out a null buffer -- but the read step's size came from elsewhere), so the
+# SDK's R_UNLESS(buffer != nullptr) answered fs ResultNullptrArgument again -- 0x2f5e02, the svcBreak's
+# info print at stack slot 0x68, one frame deeper than run60's 0x38 -- and sead aborted. The sweep: the
+# impl has no bl callers at all -- its routes are the wrapper's two tail branches and the wrapper's blr
+# (its error tail f_700009aeb0 runs after the other callers' bls) -- so the one guard on the impl entry's
+# buffer field covers every route, answering 0 bytes read, success: the wrapper's callers (the real
+# 0x100-byte save-dir listing f_700009d950, the aborting f_700009dbf0, the sibling f_700009dcc8) all
+# compare count against requested and treat 0 as the nothing-read path. A null buffer reads nothing.
+def _fs_read_null_buffer_guard(gen, a):
+    assert _word(gen, a) == 0xd10103ff, hex(_word(gen, a))  # sub sp, sp, #0x40 (the frame, entry)
+    assert _word(gen, a + 0x28) == 0xf9400681, hex(_word(gen, a + 0x28))  # ldr x1, [x20, #8] (the buffer field)
+    return ('{ uint64_t buf = LD64(c->x[0] + 8ull); if (!buf) { c->x[0] = 0ull; return; } }'
+            f'  /* {a:#x}: sub sp, sp, #0x40 (IFile read impl: null buffer field, guarded to 0 bytes read) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1637,6 +1657,7 @@ PATCHES = {
     'dir_entry_accessor_guard_4': _dir_entry_accessor_guard_4,
     'dir_entry_accessor_guard_5': _dir_entry_accessor_guard_5,
     'fs_read_zero_guard': _fs_read_zero_guard,
+    'fs_read_null_buffer_guard': _fs_read_null_buffer_guard,
 }
 
 

@@ -652,6 +652,19 @@ SITES = [
     # the host file's real contents were never at issue -- the assert is client-side, before the IPC).
     Site('fs_read_zero_guard', 'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd f9400008 aa0303f3 aa0203f4 '
          'aa0103f5 aa0003f6 f9404108 d63f0100 36000140/ff00001f 9100a2c0', 0),
+    # run61's deeper null-buffer read (tools/patches.py fs_read_null_buffer_guard): the wrapper's entry
+    # guard took the zero-size request, but the step's read went on -- run61's abort is the same fs
+    # ResultNullptrArgument (0x2f5e02, svcBreak info 723ffff068) at the same frame 700009a980: the
+    # wrapper's success tail branches into its impl f_700009a93c (bl 0x700009a97c the SDK import thunk
+    # f_70015a1110), whose x1 is not the caller's buffer argument but the object's own buffer field,
+    # ldr x1, [x20, #8] -- run61's request carried a nonzero size, so the real invariant is the null
+    # buffer field itself, not a zero size. The sweep: the impl has no bl callers at all -- every route
+    # to it is the wrapper's two tail branches (the error tail f_700009aeb0 sits after the wrapper's
+    # other callers' bl 0x700009b7cc/0x700009dd78) and the wrapper's own blr -- so one guard on the
+    # impl entry's [x0+8] covers every route: it answers 0 bytes read, success, and the wrapper's
+    # callers already treat count 0 as the nothing-read path (their cmp answered, requested).
+    Site('fs_read_null_buffer_guard', 'code', 'd10103ff a9017bfd a90257f6 a9034ff4 910043fd aa0303f3 '
+         'aa0203f5 aa0103f6 aa0003f4 94000408 f9400681 910023e0 aa1603e3', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -768,12 +781,13 @@ OPTIONAL_GROUPS = [
                                     #  extended the family to its four untagged-handle siblings: the tag
                                     #  0x2001 pair (tails +4/+8 -- the run58 fault) and the tag 0x2000
                                     #  pair (tails +4/+8), all answering the same neutral offset 0)
-    ('fs_read_zero_guard',),        # (run60's fault family: the accessor answer 0 sized the step's
-                                    #  allocation to nothing -- a null pool buffer -- and the SDK's
+    ('fs_read_zero_guard',          # (run60's fault family: the accessor answer 0 sized the step's
+     'fs_read_null_buffer_guard'),  #  allocation to nothing -- a null pool buffer -- and the SDK's
                                     #  ReadFile R_UNLESS(buffer) answered fs ResultNullptrArgument
                                     #  (0x2f5e02) which sead's X macro aborted: the wrapper answers 0
-                                    #  bytes read, success, on a zero-size request -- what the callers'
-                                    #  cmp answered, requested already treats as the nothing-read path)
+                                    #  bytes read, success, on a zero-size request, and run61 extended
+                                    #  it to the impl's own null buffer field [x0+8] -- what the
+                                    #  callers' cmp answered, requested already treat as nothing-read)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -998,6 +1012,7 @@ KNOWN = {
         'dir_entry_accessor_guard_4': 0x700007eacc,
         'dir_entry_accessor_guard_5': 0x700007eb38,
         'fs_read_zero_guard': 0x700009b77c,
+        'fs_read_null_buffer_guard': 0x700009a93c,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

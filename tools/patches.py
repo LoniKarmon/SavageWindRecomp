@@ -1944,6 +1944,32 @@ def _framework_x19_load_guard_17(gen, a):
             f'  /* {a:#x}: ldr x1, [x19, #8] (its own cbnz takes the null fall-through) */')
 
 
+# The holder's dirty sub-array (game_sites.py holder_array_init_guard, tools/patches.py):
+# run70 cleared the dirty-x19 family -- every guarded load answered null and the param-table
+# chain walked one level deeper: the step's callee f_7001550dec read the stack buffer's
+# [x0, #0x70] object (valid), whose sibling f_7001551ee4 alloc'd the 0x10 entry, stored it at
+# [x19, #0x18], init'd it, then read the holder's old sub-array pointer [x19, #0x10] and
+# cbz-branched on it before calling the node init f_700155210c -- which died with signal 11
+# accessing 0x6800000014, the dump's host pc f_700155210c+fa objdump-pinning the pre-index
+# str wzr, [x21, #0x10]! at 0x700155214c (the dump's x19 = x21 = 0x6800000004 exactly): the
+# ParamHolder union cell {4, "h"} read as the sub-array pointer -- the next raw param cell of
+# the never-built subsystem where a built one would hold a zeroed head node. Every access in
+# the init runs on that cell (the node walk spans [x19, #0x10] through [x19, #0x2c8] and the
+# node compares read [x9, #0x18..#0x2c8] tables off it), so the guard returns at entry with
+# the answer 0 of the init's own failed singleton alloc (its cbz x0 tail 0x70015524b8 is the
+# same done path), the caller ignores x0 after its bl at 0x7001551f2c, and with a real built
+# subsystem the on-map pointer re-executes the spill frame untouched.
+def _holder_array_init_guard(gen, a):
+    assert _word(gen, a) == 0xd10183ff, hex(_word(gen, a))  # sub sp, sp, #0x60 (the frame, entry)
+    assert _word(gen, a + 0x18) == 0x910043fd, hex(_word(gen, a + 0x18))  # add x29, sp, #0x10 (fp)
+    assert _word(gen, a + 0x1c) == 0xaa0003f3, hex(_word(gen, a + 0x1c))  # mov x19, x0 (the object)
+    return ('{ if (x0 - 0x7000000000ull >= 0x320000000ull) { c->x[0] = 0ull; return; }'
+            ' sp_ = (uint64_t)(sp_ - 0x60ull); }'
+            f'  /* {a:#x}: sub sp, sp, #0x60 (sub-array init: the holder\'s never-built'
+            ' sub-array pointer is the {4,"h"} ParamHolder cell off the guest map -- the step'
+            ' answers its own null-alloc done 0, the caller ignores x0) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -2125,6 +2151,7 @@ PATCHES = {
     'framework_x19_load_guard_15': _framework_x19_load_guard_15,
     'framework_x19_load_guard_16': _framework_x19_load_guard_16,
     'framework_x19_load_guard_17': _framework_x19_load_guard_17,
+    'holder_array_init_guard': _holder_array_init_guard,
 }
 
 

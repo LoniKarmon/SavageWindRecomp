@@ -839,6 +839,20 @@ SITES = [
     Site('framework_x19_load_guard_15', 'code', 'f9400260 9406030d', 0),
     Site('framework_x19_load_guard_16', 'code', 'f9400260 9405dfd0', 0),
     Site('framework_x19_load_guard_17', 'code', 'f9400661 b5000241', 0),
+    # The holder's dirty sub-array (tools/patches.py holder_array_init_guard): run70 cleared the
+    # dirty-x19 family and the param-table chain walked one level deeper -- the step's callee
+    # f_7001550dec read the stack buffer's [x0, #0x70] object (valid), whose ctor sibling
+    # f_7001551ee4 alloc'd its 0x10 entry, stored it at [x19, #0x18], init'd it and then read the
+    # holder's old sub-array pointer [x19, #0x10], cbz-branched on it (non-zero here) and called
+    # the node init f_700155210c on it -- and died with signal 11 accessing 0x6800000014: the
+    # dump's host pc f_700155210c+fa objdump-pins the pre-index str wzr, [x21, #0x10]! at
+    # 0x700155214c (the dump's x19 = x21 exactly). The dump's x0 = 0x6800000004 -- the ParamHolder
+    # union {int i; char c[4]} cell {4, "h"} read as the sub-array pointer (the next raw param
+    # cell of the never-built subsystem). Every read in the init runs on that cell (its node walk
+    # spans [x19, #0x10] through [x19, #0x2c8]), so the guard returns at entry with the answer 0
+    # of its own failed singleton alloc (its cbz x0 tail): the caller ignores x0 after the bl, and
+    # with a real built subsystem the on-map pointer re-executes the frame untouched.
+    Site('holder_array_init_guard', 'code', 'd10183ff a9017bfd a90267fa a9035ff8 a90457f6 a9054ff4 910043fd aa0003f3 94000000/fc000000 b4000000/ff00001f aa1303f5', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -1010,6 +1024,10 @@ OPTIONAL_GROUPS = [
      'framework_x19_load_guard_15',
      'framework_x19_load_guard_16',
      'framework_x19_load_guard_17'),
+    ('holder_array_init_guard',),       # (run70's fault family: the holder's never-built sub-
+                                        #  array pointer is the {4,"h"} ParamHolder cell -- the
+                                        #  node init's whole walk runs on it, the step returns
+                                        #  its own null-alloc answer 0, the caller ignores x0)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1272,6 +1290,7 @@ KNOWN = {
         'framework_x19_load_guard_15': 0x700127eee8,
         'framework_x19_load_guard_16': 0x700127ef08,
         'framework_x19_load_guard_17': 0x700127ef18,
+        'holder_array_init_guard': 0x700155210c,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

@@ -882,6 +882,23 @@ SITES = [
     Site('entry_field_lookup_guard',    'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd 90000008/9f00001f 90000015/9f00001f 910002b5/ffc003ff f9400108/ffc003ff', 0),
     Site('entry_field_lookup_guard_2',  'code', 'a9be7bfd f9000bf3 910003fd aa0003f3 90000000/9f00001f 91000000/ffc003ff aa1f03e2 aa1f03e3', 0),
     Site('entry_config_fill_guard',     'code', 'a9ba7bfd a9016ffc 910003fd a90267fa a9035ff8 a90457f6 a9054ff4 d11903ff', 0),
+    # The step tail's unbound sead delegate (tools/patches.py param_delegate_invoke_guard):
+    # run73 cleared the dirty-field callee family -- the step ran its whole tail into its
+    # sub-step f_7001550ed0 -- and died on an SDK assertion instead of a fault: the guest
+    # frames 7001550ee8 7001550e90 700127ec98 pin the param chain (framework step, guarded
+    # tail, sub-step), and the sub-step's bl #0x70015a19e0 at 0x7001550ee4 -- a module import
+    # thunk (adrp/ldr/br on GOT slot 0x7001d78db8) the resolver wired to the sdk's delegate
+    # invoke f_7002640e30, which ldrb's the delegate's state byte at [x0, #0x28] and dispatches
+    # state 1 or 2 -- fell through to its assert tail (the sead report f_700259fee0 printing
+    # "SDK has been aborted or failed assertion with no message." into the log, then
+    # svcBreak(reason=0) at 0x700267974c, the run's FATAL). The delegate at object + 0x240 was
+    # never bound (the registrar that binds it never ran -- the same story as the raw cells) so
+    # the state byte is neither 1 nor 2. The guard answers the invoke's own "nothing changed"
+    # 0 and skips the call: the next line's tbz w0, #0 takes the sub-step's own return, and its
+    # caller's tail runs cbz-guarded (f_7000f093f0's null answer, the [x19, #0x2a0] null check).
+    # With a real Switch's built delegate (state byte 1 or 2) the guarded call dispatches
+    # untouched; the byte itself is inside the step's valid object, so the guard's load is safe.
+    Site('param_delegate_invoke_guard', 'code', '94000000/fc000000 36000000/fff8001f 94000000/fc000000 b9427268 6b08001f 54000001/ff00001f f9400bf3 a8c27bfd', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -1068,6 +1085,12 @@ OPTIONAL_GROUPS = [
                                         #  and the config fill whose base sub-object hangs off
                                         #  the raw [x19, #0x60] cell -- all return at entry
                                         #  answering the ignored 0 their callers reload)
+    ('param_delegate_invoke_guard',),   # (run73's fault family: the sub-step's delegate at
+                                        #  object + 0x240 is never bound -- its state byte is
+                                        #  neither 1 nor 2, so the sdk invoke asserts and
+                                        #  svcBreaks ("SDK has been aborted...") -- the guard
+                                        #  answers the invoke's own "nothing changed" 0 and
+                                        #  skips the call, the next tbz takes the step's ret)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1335,6 +1358,7 @@ KNOWN = {
         'entry_field_lookup_guard': 0x7001394864,
         'entry_field_lookup_guard_2': 0x7001382998,
         'entry_config_fill_guard': 0x700138e5b8,
+        'param_delegate_invoke_guard': 0x7001550ee4,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

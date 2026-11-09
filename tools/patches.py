@@ -2043,6 +2043,35 @@ def _entry_config_fill_guard(gen, a):
             ' it, the step returns its ignored 0 to the caller\'s own cbz x20 tail) */')
 
 
+# The step tail's unbound sead delegate (game_sites.py param_delegate_invoke_guard,
+# tools/patches.py): run73 cleared the dirty-field callee family -- the step f_7001550dec ran
+# its whole tail into its sub-step f_7001550ed0 -- and died on an SDK assertion instead of a
+# fault: the log's sead report printed "SDK has been aborted or failed assertion with no
+# message." and the FATAL is svcBreak(reason=0) at sdk 0x700267974c; the guest frames
+# 7001550ee8 7001550e90 700127ec98 pin the param chain exactly (framework step, guarded tail,
+# sub-step). The sub-step's bl #0x70015a19e0 at 0x7001550ee4 is a module import thunk (adrp /
+# ldr x17, [x16, #0xdb8] / br x17 on GOT slot 0x7001d78db8) the resolver wired to the sdk's
+# delegate invoke f_7002640e30: it ldrb's the delegate's state byte at [x0, #0x28] and
+# dispatches state 1 or 2 -- here it fell to its assert tail because the delegate at object +
+# 0x240 was never bound (the same never-built registrar -- the byte is raw). The guard answers
+# the invoke's own "nothing changed" 0 and skips the call: the next line's tbz w0, #0 takes
+# the sub-step's own return and its caller's tail is all cbz-guarded (f_7000f093f0's null
+# singleton answer, the [x19, #0x2a0] null check). With a real Switch's built delegate the
+# state byte is 1 or 2 and the guarded call dispatches untouched; the state byte is inside the
+# step's valid object (its [x19, #0x270]-style loads ran), so the guard's own load is safe.
+def _param_delegate_invoke_guard(gen, a):
+    assert _word(gen, a) == 0x940142bf, hex(_word(gen, a))  # bl #0x70015a19e0 (the invoke thunk)
+    assert _word(gen, a + 4) == 0x360000a0, hex(_word(gen, a + 4))  # tbz w0, #0 (nothing-changed ret)
+    return ('{ if (LD8(x0 + 0x28ull) - 1ull > 1ull) x0 = 0ull;'
+            ' else { extern void f_70015a19e0(Cpu *);'
+            ' x30 = 0x7001550ee8ull; c->x[0] = x0; c->x[19] = x19; c->x[29] = x29;'
+            ' c->x[30] = x30; c->sp = sp_; f_70015a19e0(c); x0 = c->x[0]; x8 = c->x[8];'
+            ' x30 = c->x[30]; } }'
+            f'  /* {a:#x}: bl #0x70015a19e0 (delegate invoke: the state byte at [x0, #0x28] is'
+            ' raw -- neither bound 1 nor 2 -- the guard answers the invoke\'s own nothing-'
+            ' changed 0 so the tbz takes the step\'s return; a built delegate re-invokes) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -2229,6 +2258,7 @@ PATCHES = {
     'entry_field_lookup_guard': _entry_field_lookup_guard,
     'entry_field_lookup_guard_2': _entry_field_lookup_guard_2,
     'entry_config_fill_guard': _entry_config_fill_guard,
+    'param_delegate_invoke_guard': _param_delegate_invoke_guard,
 }
 
 

@@ -665,6 +665,27 @@ SITES = [
     # callers already treat count 0 as the nothing-read path (their cmp answered, requested).
     Site('fs_read_null_buffer_guard', 'code', 'd10103ff a9017bfd a90257f6 a9034ff4 910043fd aa0303f3 '
          'aa0203f5 aa0103f6 aa0003f4 94000408 f9400681 910023e0 aa1603e3', 0),
+    # run63's null fs-state family (tools/patches.py fs_state guards): the read guards answered, the
+    # step f_7000f07ee0 ran on -- and passed its never-built fs state (the dump's x21 = 0: its own
+    # cbnz at +0x60 took the no-caller-buffer branch, so the argument stays 0) into the accessor
+    # thunks: bl f_7000f0814c f_700008f87c -- which re-aims x0 at its x1 (the state) -- hits the
+    # thunk f_700007e05c ldr x0, [x0, #8] on the null state: the run63 signal 11 accessing 0x8 at
+    # the dump's host pc f_700007e05c+10, x6/x7 still spelling "DummySound.bfsar". The sweep of
+    # every dereference of that object in the step: the thunk f_700007e05c (tail b f_700007f704 ->
+    # bl f_700007eee0, base + signed offset at +0x34; callers f_700008f87c and f_700008f8a0 pack
+    # orr x0, x9(=4), x8, lsl #4 -- the tag-4 handle family #24/#25 answered neutral), its sibling
+    # thunk f_700007e044 (same ldr x0, [x0, #8], tail b f_700007f6b0; callers f_7000080440 from the
+    # step's bl f_7000f0817c f_700008042c and f_70000807f0), and the two entry queries f_700007e36c
+    # and f_700007e3e0 (both ldr x0, [x0, #8] at +4, the same state; reached from the step's
+    # f_700008042c and from the tail accessors f_70000805b4/f_70000805bc -> f_7000093644/f_7000093934)
+    # -- all four answer 0 at the entry, the established neutral: tag-4 handle index 0, query flag
+    # 0 ("miss") the callers already carry on a failed bl f_700007f7ec/f_700007f9dc.
+    Site('fs_state_accessor_guard', 'code', 'f9400400 140005a9', 0),
+    Site('fs_state_accessor_guard_2', 'code', 'f9400400 1400059a', 0),
+    Site('fs_state_query_guard', 'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd aa0003f6 f9400400 '
+         'aa0103f4 2a0203f5 2a0203e1 aa1403e2 94000516', 0),
+    Site('fs_state_query_guard_2', 'code', 'a9bd7bfd f9000bf5 a9024ff4 910003fd aa0003f5 f9400400 '
+         'aa0103f4 94000578', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -788,6 +809,11 @@ OPTIONAL_GROUPS = [
                                     #  bytes read, success, on a zero-size request, and run61 extended
                                     #  it to the impl's own null buffer field [x0+8] -- what the
                                     #  callers' cmp answered, requested already treat as nothing-read)
+    ('fs_state_accessor_guard',     # (run63's fault family: the step f_7000f07ee0 passed its
+     'fs_state_accessor_guard_2',   #  never-built fs state (dump x21 = 0) into the sead accessor
+     'fs_state_query_guard',        #  chain and the thunk's ldr x0, [x0, #8] faulted at 0x8 -- the
+     'fs_state_query_guard_2'),     #  sweep's four dereference sites all answer the established
+                                    #  neutral 0 at the entry (tag-4 handle index 0, query flag miss)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1013,6 +1039,10 @@ KNOWN = {
         'dir_entry_accessor_guard_5': 0x700007eb38,
         'fs_read_zero_guard': 0x700009b77c,
         'fs_read_null_buffer_guard': 0x700009a93c,
+        'fs_state_accessor_guard': 0x700007e05c,
+        'fs_state_accessor_guard_2': 0x700007e044,
+        'fs_state_query_guard': 0x700007e36c,
+        'fs_state_query_guard_2': 0x700007e3e0,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

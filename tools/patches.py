@@ -1514,6 +1514,51 @@ def _fs_read_null_buffer_guard(gen, a):
             f'  /* {a:#x}: sub sp, sp, #0x40 (IFile read impl: null buffer field or argument, guarded to 0 bytes read) */')
 
 
+# The null fs state the sead accessors abort on (game_sites.py fs_state guards, tools/patches.py):
+# run63's fault -- the read guards answered and the step f_7000f07ee0 ran on, passing its never-built
+# fs state (the dump's x21 = 0, the argument the step's own cbnz at +0x60 treats as "no caller buffer")
+# into the accessor thunks: bl 0x7000f0814c f_700008f87c re-aims x0 at its x1 (the state) and hits the
+# thunk f_700007e05c ldr x0, [x0, #8] on the null state -- signal 11 accessing 0x8 at the dump's host
+# pc f_700007e05c+10, x6/x7 still spelling "DummySound.bfsar". The sweep enumerated every dereference
+# of that object in the step: the thunk f_700007e05c (tail b f_700007f704: ldr x0, [x0, #0x40], bl
+# f_700007eee0: ldrsw x8, [x0, #0x34], add x0, x0, x8 -- base + signed self-relative offset; its two
+# callers f_700008f87c and f_700008f8a0 pack orr x0, x9(=4), x8, lsl #4 -- the tag-4 handle family
+# #24/#25 answered neutral 0), its sibling thunk f_700007e044 (the same ldr x0, [x0, #8], tail b
+# f_700007f6b0; callers f_7000080440 -- from the step's bl 0x7000f0817c f_700008042c -- and f_70000807f0),
+# and the two entry queries f_700007e36c (ldr x0, [x0, #8] at +0x14 then bl f_700007f7ec) and f_700007e3e0
+# (the same at +0x14 then bl f_700007f9dc; reached from the step's f_700008042c and the tail accessors
+# f_70000805b4/f_70000805bc -> f_7000093644/f_7000093934) -- all four guard at the entry: a null state
+# answers 0, the established neutral (tag-4 handle index 0; the query bit the callers already carry on
+# a failed probe). The state is only ever null on our machine (families #24-#26's never-built fs state)
+# -- on real hardware it is built and every guard passes.
+def _fs_state_accessor_guard(gen, a):
+    assert _word(gen, a) == 0xf9400400, hex(_word(gen, a))  # ldr x0, [x0, #8] (the state field, entry)
+    assert _word(gen, a + 4) == 0x140005a9, hex(_word(gen, a + 4))  # b #0x700007f704 (the tail chain)
+    return ('{ if (!c->x[0]) { c->x[0] = 0ull; return; } }'
+            f'  /* {a:#x}: ldr x0, [x0, #8] (fs state accessor thunk: null state, guarded to 0) */')
+
+
+def _fs_state_accessor_guard_2(gen, a):
+    assert _word(gen, a) == 0xf9400400, hex(_word(gen, a))  # ldr x0, [x0, #8] (the state field, entry)
+    assert _word(gen, a + 4) == 0x1400059a, hex(_word(gen, a + 4))  # b #0x700007f6b0 (the tail chain)
+    return ('{ if (!c->x[0]) { c->x[0] = 0ull; return; } }'
+            f'  /* {a:#x}: ldr x0, [x0, #8] (fs state accessor thunk 2: null state, guarded to 0) */')
+
+
+def _fs_state_query_guard(gen, a):
+    assert _word(gen, a) == 0xa9bd7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x30]! (the frame, entry)
+    assert _word(gen, a + 0x14) == 0xf9400400, hex(_word(gen, a + 0x14))  # ldr x0, [x0, #8] (the state field)
+    return ('{ if (!c->x[0]) { c->x[0] = 0ull; return; } }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x30]! (fs state query: null state, guarded to 0) */')
+
+
+def _fs_state_query_guard_2(gen, a):
+    assert _word(gen, a) == 0xa9bd7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x30]! (the frame, entry)
+    assert _word(gen, a + 0x14) == 0xf9400400, hex(_word(gen, a + 0x14))  # ldr x0, [x0, #8] (the state field)
+    return ('{ if (!c->x[0]) { c->x[0] = 0ull; return; } }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x30]! (fs state query 2: null state, guarded to 0) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1658,6 +1703,10 @@ PATCHES = {
     'dir_entry_accessor_guard_5': _dir_entry_accessor_guard_5,
     'fs_read_zero_guard': _fs_read_zero_guard,
     'fs_read_null_buffer_guard': _fs_read_null_buffer_guard,
+    'fs_state_accessor_guard': _fs_state_accessor_guard,
+    'fs_state_accessor_guard_2': _fs_state_accessor_guard_2,
+    'fs_state_query_guard': _fs_state_query_guard,
+    'fs_state_query_guard_2': _fs_state_query_guard_2,
 }
 
 

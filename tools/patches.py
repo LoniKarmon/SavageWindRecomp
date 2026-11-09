@@ -1680,6 +1680,99 @@ def _sead_heap_alloc_guard(gen, a):
             " guarded to the step's done tail) */")
 
 
+# The never-built resource manager (game_sites.py resource_manager_* guards, tools/patches.py):
+# run67 passed the path-entry guards (family #30 closed) and died with signal 11 accessing 0x318;
+# the dump's host pc f_70012647e8+8f with guest lr 7001420c7c pins the resource path lookup --
+# the leaf f_70012647e8 walks [[x0, #0x158] then [+0x3638] to the entry table and reads its
+# count with ldr w9, [x8, #0x318]. On our machine the manager was never built (the dump's x0 is
+# a live actor, the +0x3638 field reads 0 out of readable data), so the count read faults at
+# exactly 0x318 (x28 carries the "fs::ResultPathNotFound" the not-found shape returns). The
+# sweep: the leaf is reached from exactly two functions (caller1's float block -- the one that
+# died, which ignores the answer -- and caller2, whose x0 comes from the never-built .bss
+# singleton [0x7001e43df0]); the leaf's own "path not found" exit is a bare epilogue ret
+# carrying x0 = 0, exactly the shape its cbz x0 takes when the string search fails, so both
+# chain derefs answer it for a base off the guest map -- the field read (this run's fault) and
+# x0 itself -- and the found-path flag stores and tail call are skipped exactly as on the
+# game's own not-found path. The same count field lives on the sibling manager pointer
+# [x0, #0xcc0]: the registration leaf f_7000fcded4 (which the lookup tail-calls with x0 = the
+# same object on the found path) reads ldr w8, [x21, #0x318] after its virtual probe and hands
+# the table to f_7000fd5f94, and the removal sibling f_7000fcdd10 (the other callers' other
+# half) reads it twice, before the entry search and after it (where the search's own answer
+# would land instead). All three answer their own "nothing registered/removed" exit --
+# cmp x20, #0; cset w0, ne; ret, the null search result's 0 -- the removal sites' answer also
+# carrying the [x19, #0x168] = -1 index reset the game's own null-result path stores, and the
+# later removal site answers 0 straight (its [x19, #0x120] pair load and post-search call
+# skipped, the game's own skip shape). With a real built table (run67's x21 is live heap) the
+# reads re-execute untouched. Last the never-built rng: caller1's post-lookup float block
+# reads [0x7001e34818] (a zeroed .bss singleton) three times into the 11-instruction xorshift
+# step f_7000eb6e7c, whose first ldp w8, w9, [x0] faults on address 0; the entry answers the
+# step's own returned new state, w0 = 0 -- the deterministic stream caller1 bfxils into its
+# actor floats -- skipping the state stores with a null base.
+def _resource_manager_chain_guard(gen, a):
+    assert _word(gen, a) == 0xf940ac08, hex(_word(gen, a))  # ldr x8, [x0, #0x158] (the manager)
+    assert _word(gen, a - 4) == 0x910003fd, hex(_word(gen, a - 4))  # mov x29, sp (the leaf prologue)
+    assert _word(gen, a - 8) == 0xa9014ff4, hex(_word(gen, a - 8))  # stp x20, x19, [sp, #0x10]
+    return ('{ if (c->x[0] - 0x7000000000ull >= 0x320000000ull)'
+            ' { c->x[0] = 0ull; goto L_70012648b4; }'
+            ' uint64_t ea = c->x[0] + 0x158ull; uint64_t v = LD64(ea); x8 = (uint64_t)(v); }'
+            f'  /* {a:#x}: ldr x8, [x0, #0x158] (path lookup: manager base off the guest map,\n'
+            "     guarded to the leaf's not-found ret) */")
+
+
+def _resource_manager_count_guard(gen, a):
+    assert _word(gen, a) == 0xb9431909, hex(_word(gen, a))  # ldr w9, [x8, #0x318] (the count)
+    assert _word(gen, a - 4) == 0xf95b1d08, hex(_word(gen, a - 4))  # ldr x8, [x8, #0x3638] (the table)
+    return ('{ if (x8 - 0x7000000000ull >= 0x320000000ull)'
+            ' { c->x[0] = 0ull; goto L_70012648b4; }'
+            ' uint64_t ea = x8 + 0x318ull; uint64_t v = LD32(ea); c->x[9] = (uint64_t)(v); }'
+            f'  /* {a:#x}: ldr w9, [x8, #0x318] (path lookup: entry table never built,'
+            " guarded to the leaf's not-found ret) */")
+
+
+def _resource_manager_reg_count_guard(gen, a):
+    assert _word(gen, a) == 0xb9431aa8, hex(_word(gen, a))  # ldr w8, [x21, #0x318] (the count)
+    assert _word(gen, a - 4) == 0xd63f0100, hex(_word(gen, a - 4))  # blr x8 (the virtual probe)
+    assert _word(gen, a - 8) == 0xf9405908, hex(_word(gen, a - 8))  # ldr x8, [x8, #0xb0] (the vtable)
+    return ('{ if (x21 - 0x7000000000ull >= 0x320000000ull)'
+            ' { c->x[20] = 0ull; goto L_7000fcdfe8; }'
+            ' uint64_t ea = x21 + 0x318ull; uint64_t v = LD32(ea); x8 = (uint64_t)(v); }'
+            f'  /* {a:#x}: ldr w8, [x21, #0x318] (registration: sibling manager never built,\n'
+            "     guarded to the leaf's nothing-registered ret) */")
+
+
+def _resource_manager_removal_guard(gen, a):
+    assert _word(gen, a) == 0xb9431aa8, hex(_word(gen, a))  # ldr w8, [x21, #0x318] (the count)
+    assert _word(gen, a + 4) == 0x12800016, hex(_word(gen, a + 4))  # mov w22, #-1 (the no-index)
+    return ('{ if (c->x[21] - 0x7000000000ull >= 0x320000000ull) { c->x[20] = 0ull;\n'
+            '     { uint64_t ea2 = x19 + 0x168ull; ST32(ea2, (uint32_t)0xffffffffu); }\n'
+            '     goto L_7000fcde30; }'
+            ' uint64_t ea = c->x[21] + 0x318ull; uint64_t v = LD32(ea); x8 = (uint64_t)(v); }'
+            f'  /* {a:#x}: ldr w8, [x21, #0x318] (removal: sibling manager never built, guarded\n'
+            "            to the sibling's nothing-removed ret with the own index reset) */")
+
+
+def _resource_manager_removal_guard_2(gen, a):
+    assert _word(gen, a) == 0xb9431aa8, hex(_word(gen, a))  # ldr w8, [x21, #0x318] (the count)
+    assert _word(gen, a - 4) == 0xd63f0100, hex(_word(gen, a - 4))  # blr x8 (the virtual probe)
+    assert _word(gen, a + 4) == 0x7100051f, hex(_word(gen, a + 4))  # cmp w8, #1 (the count probe)
+    assert _word(gen, a + 8) == 0x540001eb, hex(_word(gen, a + 8))  # b.lt #0x7000fcdeac
+    return ('{ if (c->x[21] - 0x7000000000ull >= 0x320000000ull) { c->x[20] = 0ull;'
+            ' goto L_7000fcde30; }'
+            ' uint64_t ea = c->x[21] + 0x318ull; uint64_t v = LD32(ea); x8 = (uint64_t)(v); }'
+            f'  /* {a:#x}: ldr w8, [x21, #0x318] (removal post-search: same, guarded to the\n'
+            "            sibling's nothing-removed ret -- its x20 reload answers 0) */")
+
+
+def _resource_manager_rand_guard(gen, a):
+    assert _word(gen, a) == 0x29402408, hex(_word(gen, a))  # ldp w8, w9, [x0] (the rng state)
+    assert _word(gen, a + 4) == 0x4a082d08, hex(_word(gen, a + 4))  # eor w8, w8, w8, lsl #11
+    return ('{ if (x0 - 0x7000000000ull >= 0x320000000ull) { c->x[0] = 0ull; return; }'
+            ' uint64_t ea = x0 + 0; uint64_t a = LD32(ea), b = LD32(ea + 4);'
+            ' x8 = (uint64_t)(a); x9 = (uint64_t)(b); }'
+            f'  /* {a:#x}: ldp w8, w9, [x0] (rng: never-built state singleton off the guest map,'
+            ' the step answers its own returned new state 0) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1836,6 +1929,12 @@ PATCHES = {
     'load_balancer_handle_guard_2': _load_balancer_handle_guard_2,
     'physics_path_scan_guard': _physics_path_scan_guard,
     'sead_heap_alloc_guard': _sead_heap_alloc_guard,
+    'resource_manager_chain_guard': _resource_manager_chain_guard,
+    'resource_manager_count_guard': _resource_manager_count_guard,
+    'resource_manager_reg_count_guard': _resource_manager_reg_count_guard,
+    'resource_manager_removal_guard': _resource_manager_removal_guard,
+    'resource_manager_removal_guard_2': _resource_manager_removal_guard_2,
+    'resource_manager_rand_guard': _resource_manager_rand_guard,
 }
 
 

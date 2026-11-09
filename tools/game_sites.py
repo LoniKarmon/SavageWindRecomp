@@ -761,6 +761,34 @@ SITES = [
     # entries converted up to there are still marked parsed).
     Site('physics_path_scan_guard', 'code', 'aa1f03f5 38756a88', 1),
     Site('sead_heap_alloc_guard', 'code', 'f9455d08 531f7afa 52800102 f9400108', 3),
+    # run67's never-built resource manager (tools/patches.py resource_manager_*): boot passed the
+    # path-entry guards (family #30 closed -- run67's x28 carries "fs::ResultPathNotFound", the
+    # deepest route yet: the Physics/System param step and the LoadBalancer step tails ran) and
+    # died on signal 11 accessing 0x318. The dump's host pc f_70012647e8+8f with guest lr
+    # 7001420c7c pins the resource path lookup: the leaf walks [[x0, #0x158] then [+0x3638] to
+    # the entry table and reads its count with ldr w9, [x8, #0x318] -- on our machine the
+    # manager was never built, the +0x3638 field reads 0 from readable data, so the count read
+    # faults at exactly 0x318. The leaf's own "path not found" exit is a bare epilogue ret
+    # carrying x0 = 0 (the shape its cbz x0 takes when the string search fails, which the
+    # caller1 float block right after the bl already tolerates) -- both chain derefs guard to it
+    # for a base off the guest map: the table field (this run's fault) and x0 itself (the second
+    # caller loads it from the never-built .bss singleton [0x7001e43df0]). The same count field
+    # on the sibling manager pointer [x0, #0xcc0]: the registration leaf f_7000fcded4 (which the
+    # lookup tail-calls with x0 = the same object on the found path) reads ldr w8, [x21, #0x318]
+    # after its virtual probe and hands the table to f_7000fd5f94, and the removal sibling
+    # f_7000fcdd10 (the other callers' other half) reads it twice; all three guard to their own
+    # "nothing registered/removed" exits (cmp x20, #0; cset w0, ne -- the null search result's
+    # 0 answer, the removal sites' shape also carrying the [x19, #0x168] = -1 index reset).
+    # Last the never-built rng: caller1's post-lookup float block reads [0x7001e34818] (a zeroed
+    # .bss singleton) three times into the xorshift step f_7000eb6e7c, whose first ldp w8, w9,
+    # [x0] faults on address 0 -- the entry answers the step's own returned new state w0 = 0
+    # (the deterministic stream caller1 bfxils into its actor floats), state stores skipped.
+    Site('resource_manager_chain_guard', 'code', 'a9014ff4 910003fd f940ac08', 2),
+    Site('resource_manager_count_guard', 'code', 'f95b1d08 b9431909', 1),
+    Site('resource_manager_reg_count_guard', 'code', 'f9405908 d63f0100 b9431aa8 7100051f', 2),
+    Site('resource_manager_removal_guard', 'code', 'b9431aa8 12800016', 0),
+    Site('resource_manager_removal_guard_2', 'code', 'd63f0100 b9431aa8 7100051f 5400000b/ff00001f', 1),
+    Site('resource_manager_rand_guard', 'code', '29402408 4a082d08 29412c0a 29002809 53087d09', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -905,6 +933,12 @@ OPTIONAL_GROUPS = [
      'sead_heap_alloc_guard'),      #  array base and the sead heap manager are both never built
                                     #  -- off the guest map -- so the step answers its own
                                     #  "entries converted" done tail (parsed flag bit 2 set))
+    ('resource_manager_chain_guard',    # (run67's fault family: the resource manager is never
+     'resource_manager_count_guard',    #  built -- a path lookup answers the game's own "not
+     'resource_manager_reg_count_guard',#  found" (x0 = 0), the same count read on the
+     'resource_manager_removal_guard',  #  registration/removal siblings answers "nothing
+     'resource_manager_removal_guard_2',#  registered" (0), and the never-built rng singleton
+     'resource_manager_rand_guard'),    #  steps answer 0 -- actor floats garbage, boot goes on)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1142,6 +1176,12 @@ KNOWN = {
         'load_balancer_handle_guard_2': 0x7001185840,
         'physics_path_scan_guard': 0x7000eeb10c,
         'sead_heap_alloc_guard': 0x7000eeb154,
+        'resource_manager_chain_guard': 0x70012647f4,
+        'resource_manager_count_guard': 0x7001264808,
+        'resource_manager_reg_count_guard': 0x7000fcdf04,
+        'resource_manager_removal_guard': 0x7000fcddc8,
+        'resource_manager_removal_guard_2': 0x7000fcde68,
+        'resource_manager_rand_guard': 0x7000eb6e7c,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

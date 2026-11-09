@@ -1510,8 +1510,8 @@ def _fs_read_zero_guard(gen, a):
 def _fs_read_null_buffer_guard(gen, a):
     assert _word(gen, a) == 0xd10103ff, hex(_word(gen, a))  # sub sp, sp, #0x40 (the frame, entry)
     assert _word(gen, a + 0x28) == 0xf9400681, hex(_word(gen, a + 0x28))  # ldr x1, [x20, #8] (the buffer field)
-    return ('{ uint64_t buf = LD64(c->x[0] + 8ull); if (!buf) { c->x[0] = 0ull; return; } }'
-            f'  /* {a:#x}: sub sp, sp, #0x40 (IFile read impl: null buffer field, guarded to 0 bytes read) */')
+    return ('{ uint64_t buf = LD64(c->x[0] + 8ull); if (!buf || !c->x[1]) { c->x[0] = 0ull; return; } }'
+            f'  /* {a:#x}: sub sp, sp, #0x40 (IFile read impl: null buffer field or argument, guarded to 0 bytes read) */')
 
 
 PATCHES = {

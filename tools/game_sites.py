@@ -807,6 +807,38 @@ SITES = [
     # re-execute their spills untouched.
     Site('param_array_ctor_guard', 'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd 2a0103f3 aa0203f5 aa0003f4 2a0103f6', 0),
     Site('param_array_step_guard', 'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd aa0203f4 aa0303e2 2a0103f6 aa0003f3', 0),
+    # The framework step's dirty x19 (tools/patches.py framework_x19_load_guard_1..17): run69
+    # cleared the param-array family and went deepest yet -- the whole param-table section ran
+    # to completion -- and died with signal 11 accessing 0 at host pc f_700127d4d0+4484, which
+    # objdump pins to the lifted LD64(c->x[19] + 8) of ldr x2, [x19, #8] at 0x700127ec90, the
+    # dump's guest window exactly. The dump's x19 = 0x646f727000000001 -- the sead ParamHolder
+    # union {int i; char c[4]} cell {1, "prod"} of ActorInfo.product.sbyml (the last RomFS
+    # file) read as an object pointer: the step's x19 is its incoming stack-buffer argument,
+    # and the hash-lookup helper behind the thunk f_7000ea1e14 (real body f_7000ea1e18, mov
+    # x19, x2 at 0x7000ea1e38) reuses the callee-saved x19 as scratch without restoring it --
+    # on a real Switch the callee leaves a valid entry pointer there, here the never-built
+    # subsystem left the param cell. The step restores x19 only in its epilogue (ldp x20, x19,
+    # [sp, #0x50] at 0x700127ef48), so every [x19] read from 0x700127ec90 to the epilogue is
+    # the dirty cell: all seventeen loads guard as conditional load-skips answering null, the
+    # consumers all cbz/cbnz the load or pass it as a possibly-null name/value to callees the
+    # resource-manager family already taught to take null.
+    Site('framework_x19_load_guard',    'code', 'f9400662 94000000/fc000000 f94002c8 aa1603e0 f9401508 d63f0100 f10006bf 54000000/ff00001f', 0),
+    Site('framework_x19_load_guard_2',  'code', 'f9400668 b4000008/ff00001f 90000015/9f00001f 910002b5/ffc003ff aa1503e0 94000000/fc000000 f9400660 94000000/fc000000 aa1503e0 94000000/fc000000 b4000014/ff00001f 90000015/9f00001f 910002b5/ffc003ff aa1503e0 94000000/fc000000 aa1403e0', 0),
+    Site('framework_x19_load_guard_3',  'code', 'f9400660 940016f9', 0),
+    Site('framework_x19_load_guard_4',  'code', 'f9400260 97fe25bb', 0),
+    Site('framework_x19_load_guard_5',  'code', 'a9400a61 97fe25eb', 0),
+    Site('framework_x19_load_guard_6',  'code', 'f9400668 b4000008/ff00001f 90000014/9f00001f 91000294/ffc003ff aa1403e0 94000000/fc000000 f9400660 94000000/fc000000 f9400660', 0),
+    Site('framework_x19_load_guard_7',  'code', 'f9400660 94001739', 0),
+    Site('framework_x19_load_guard_8',  'code', 'f9400660 94001776', 0),
+    Site('framework_x19_load_guard_9',  'code', 'f9400260 97fbe789', 0),
+    Site('framework_x19_load_guard_10', 'code', 'f9400268 f90007e8 97fbe88c', 0),
+    Site('framework_x19_load_guard_11', 'code', 'f9400260 97faad3e', 0),
+    Site('framework_x19_load_guard_12', 'code', 'f9400261 f9400100 97faad7f', 0),
+    Site('framework_x19_load_guard_13', 'code', 'f9400262 91004308 910023e1 aa1f03e0 52800103 52800024 2a1f03e5 a900d3e8', 0),
+    Site('framework_x19_load_guard_14', 'code', 'f9400260 97f9567a', 0),
+    Site('framework_x19_load_guard_15', 'code', 'f9400260 9406030d', 0),
+    Site('framework_x19_load_guard_16', 'code', 'f9400260 9405dfd0', 0),
+    Site('framework_x19_load_guard_17', 'code', 'f9400661 b5000241', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -961,6 +993,23 @@ OPTIONAL_GROUPS = [
      'param_array_step_guard'),         #  are never built -- the builder thunk hands the array
                                         #  ctor and its wrapper a null object, both void setup
                                         #  steps return at entry -- nothing to allocate into)
+    ('framework_x19_load_guard',        # (run69's fault family: the hash helper reuses the
+     'framework_x19_load_guard_2',      #  callee-saved x19 -- the framework step's x19 now
+     'framework_x19_load_guard_3',      #  holds the {1,"prod"} ParamHolder cell of the last
+     'framework_x19_load_guard_4',      #  RomFS file -- every [x19] entry read from the fault
+     'framework_x19_load_guard_5',      #  to the step's epilogue load-skips to null, the
+     'framework_x19_load_guard_6',      #  consumers cbz/cbnz it or pass it as a possibly-null
+     'framework_x19_load_guard_7',      #  name or value to callees that already take null)
+     'framework_x19_load_guard_8',
+     'framework_x19_load_guard_9',
+     'framework_x19_load_guard_10',
+     'framework_x19_load_guard_11',
+     'framework_x19_load_guard_12',
+     'framework_x19_load_guard_13',
+     'framework_x19_load_guard_14',
+     'framework_x19_load_guard_15',
+     'framework_x19_load_guard_16',
+     'framework_x19_load_guard_17'),
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1206,6 +1255,23 @@ KNOWN = {
         'resource_manager_rand_guard': 0x7000eb6e7c,
         'param_array_ctor_guard': 0x7000f4b830,
         'param_array_step_guard': 0x7000f4b8ac,
+        'framework_x19_load_guard': 0x700127ec90,
+        'framework_x19_load_guard_2': 0x700127ed00,
+        'framework_x19_load_guard_3': 0x700127ed18,
+        'framework_x19_load_guard_4': 0x700127ed90,
+        'framework_x19_load_guard_5': 0x700127eda4,
+        'framework_x19_load_guard_6': 0x700127edb4,
+        'framework_x19_load_guard_7': 0x700127edcc,
+        'framework_x19_load_guard_8': 0x700127edd4,
+        'framework_x19_load_guard_9': 0x700127edf4,
+        'framework_x19_load_guard_10': 0x700127ee0c,
+        'framework_x19_load_guard_11': 0x700127ee30,
+        'framework_x19_load_guard_12': 0x700127ee40,
+        'framework_x19_load_guard_13': 0x700127ee64,
+        'framework_x19_load_guard_14': 0x700127eeb8,
+        'framework_x19_load_guard_15': 0x700127eee8,
+        'framework_x19_load_guard_16': 0x700127ef08,
+        'framework_x19_load_guard_17': 0x700127ef18,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

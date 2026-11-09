@@ -1805,6 +1805,145 @@ def _resource_manager_rand_guard(gen, a):
             ' the step answers its own returned new state 0) */')
 
 
+# The framework step's dirty x19 (game_sites.py framework_x19_load_guard_1..17, tools/patches.py):
+# run69 cleared the param-array family and the whole param-table section ran to completion --
+# deepest boot yet -- and died with signal 11 accessing 0: the dump's host pc f_700127d4d0+4484
+# objdump-pins the lifted LD64(c->x[19] + 8) of ldr x2, [x19, #8] at 0x700127ec90, right after
+# the call the dump's block shows. The dump's x19 = 0x646f727000000001 -- the ParamHolder union
+# {int i; char c[4]} cell {1, "prod"} (ActorInfo.product.sbyml, the last RomFS file listed)
+# read as an object pointer. The step's x19 is its incoming x0 stack-buffer argument and the
+# hash-lookup helper behind the thunk f_7000ea1e14 (body f_7000ea1e18, mov x19, x2 at
+# 0x7000ea1e38) reuses the callee-saved x19 without restoring it -- on a real Switch the
+# callee leaves its own valid entry pointer there, so a real guest never faults here. The step
+# reloads x19 only in its epilogue (ldp x20, x19, [sp, #0x50] at 0x700127ef48), so all sixteen
+# [x19] entry reads from the fault to the epilogue see the dirty cell: every load guards as a
+# conditional load-skip answering null (the sweep's audit shows each consumer either cbz/cbnz
+# the load on its own null branch -- sites 2, 6, 17 -- or passes it as the possibly-null entry
+# name/value into callees the resource-manager family already taught to take null), and with a
+# real Switch's callee left an on-map pointer here every guard re-executes its load untouched.
+def _framework_x19_load_guard(gen, a):
+    assert _word(gen, a) == 0xf9400662, hex(_word(gen, a))  # ldr x2, [x19, #8] (the entry name)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) c->x[2] = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x2, [x19, #8] (the fault: dirty x19 param cell, null name to the'
+            " query's own cbz x20 path) */")
+
+
+def _framework_x19_load_guard_2(gen, a):
+    assert _word(gen, a) == 0xf9400668, hex(_word(gen, a))  # ldr x8, [x19, #8] (the entry pointer)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) x8 = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); x8 = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x8, [x19, #8] (its own cbz x8 skips on the null answer) */')
+
+
+def _framework_x19_load_guard_3(gen, a):
+    assert _word(gen, a) == 0xf9400660, hex(_word(gen, a))  # ldr x0, [x19, #8] (the entry name)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) x0 = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); x0 = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x0, [x19, #8] (null name to the callee, as the manager family'
+            ' taught) */')
+
+
+def _framework_x19_load_guard_4(gen, a):
+    assert _word(gen, a) == 0xf9400260, hex(_word(gen, a))  # ldr x0, [x19] (the entry name)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) x0 = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); x0 = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x0, [x19] (null name to the callee) */')
+
+
+def _framework_x19_load_guard_5(gen, a):
+    assert _word(gen, a) == 0xa9400a61, hex(_word(gen, a))  # ldp x1, x2, [x19] (name and value)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) { c->x[1] = 0ull; c->x[2] = 0ull; }'
+            ' else { uint64_t ea = c->x[19] + 0; uint64_t a = LD64(ea), b = LD64(ea + 8);'
+            ' c->x[1] = (uint64_t)(a); c->x[2] = (uint64_t)(b); } }'
+            f'  /* {a:#x}: ldp x1, x2, [x19] (null name and value to the callee) */')
+
+
+def _framework_x19_load_guard_6(gen, a):
+    assert _word(gen, a) == 0xf9400668, hex(_word(gen, a))  # ldr x8, [x19, #8] (the entry pointer)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) x8 = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); x8 = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x8, [x19, #8] (its own cbz x8 skips on the null answer) */')
+
+
+def _framework_x19_load_guard_7(gen, a):
+    assert _word(gen, a) == 0xf9400660, hex(_word(gen, a))  # ldr x0, [x19, #8] (the entry name)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) x0 = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); x0 = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x0, [x19, #8] (null name to the callee) */')
+
+
+def _framework_x19_load_guard_8(gen, a):
+    assert _word(gen, a) == 0xf9400660, hex(_word(gen, a))  # ldr x0, [x19, #8] (the entry name)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) x0 = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); x0 = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x0, [x19, #8] (null name to the callee) */')
+
+
+def _framework_x19_load_guard_9(gen, a):
+    assert _word(gen, a) == 0xf9400260, hex(_word(gen, a))  # ldr x0, [x19] (the entry name)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) x0 = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); x0 = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x0, [x19] (null name to the callee) */')
+
+
+def _framework_x19_load_guard_10(gen, a):
+    assert _word(gen, a) == 0xf9400268, hex(_word(gen, a))  # ldr x8, [x19] (the entry name)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) x8 = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); x8 = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x8, [x19] (spilled to [sp, #8] for the callee, null spills take'
+            ' the own check) */')
+
+
+def _framework_x19_load_guard_11(gen, a):
+    assert _word(gen, a) == 0xf9400260, hex(_word(gen, a))  # ldr x0, [x19] (the entry name)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) x0 = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); x0 = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x0, [x19] (null name to the callee) */')
+
+
+def _framework_x19_load_guard_12(gen, a):
+    assert _word(gen, a) == 0xf9400261, hex(_word(gen, a))  # ldr x1, [x19] (the entry name)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) c->x[1] = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x1, [x19] (null name as the callee\'s x1) */')
+
+
+def _framework_x19_load_guard_13(gen, a):
+    assert _word(gen, a) == 0xf9400262, hex(_word(gen, a))  # ldr x2, [x19] (the entry value)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) c->x[2] = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); c->x[2] = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x2, [x19] (null value as the thunk\'s x2) */')
+
+
+def _framework_x19_load_guard_14(gen, a):
+    assert _word(gen, a) == 0xf9400260, hex(_word(gen, a))  # ldr x0, [x19] (the entry name)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) x0 = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); x0 = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x0, [x19] (null name to the callee) */')
+
+
+def _framework_x19_load_guard_15(gen, a):
+    assert _word(gen, a) == 0xf9400260, hex(_word(gen, a))  # ldr x0, [x19] (the entry name)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) x0 = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); x0 = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x0, [x19] (null name to the callee) */')
+
+
+def _framework_x19_load_guard_16(gen, a):
+    assert _word(gen, a) == 0xf9400260, hex(_word(gen, a))  # ldr x0, [x19] (the entry name)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) x0 = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x0ull; uint64_t v = LD64(ea); x0 = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x0, [x19] (null name to the callee) */')
+
+
+def _framework_x19_load_guard_17(gen, a):
+    assert _word(gen, a) == 0xf9400661, hex(_word(gen, a))  # ldr x1, [x19, #8] (the entry name)
+    return ('{ if (c->x[19] - 0x7000000000ull >= 0x320000000ull) c->x[1] = 0ull;'
+            ' else { uint64_t ea = c->x[19] + 0x8ull; uint64_t v = LD64(ea); c->x[1] = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x1, [x19, #8] (its own cbnz takes the null fall-through) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1969,6 +2108,23 @@ PATCHES = {
     'resource_manager_rand_guard': _resource_manager_rand_guard,
     'param_array_ctor_guard': _param_array_ctor_guard,
     'param_array_step_guard': _param_array_step_guard,
+    'framework_x19_load_guard': _framework_x19_load_guard,
+    'framework_x19_load_guard_2': _framework_x19_load_guard_2,
+    'framework_x19_load_guard_3': _framework_x19_load_guard_3,
+    'framework_x19_load_guard_4': _framework_x19_load_guard_4,
+    'framework_x19_load_guard_5': _framework_x19_load_guard_5,
+    'framework_x19_load_guard_6': _framework_x19_load_guard_6,
+    'framework_x19_load_guard_7': _framework_x19_load_guard_7,
+    'framework_x19_load_guard_8': _framework_x19_load_guard_8,
+    'framework_x19_load_guard_9': _framework_x19_load_guard_9,
+    'framework_x19_load_guard_10': _framework_x19_load_guard_10,
+    'framework_x19_load_guard_11': _framework_x19_load_guard_11,
+    'framework_x19_load_guard_12': _framework_x19_load_guard_12,
+    'framework_x19_load_guard_13': _framework_x19_load_guard_13,
+    'framework_x19_load_guard_14': _framework_x19_load_guard_14,
+    'framework_x19_load_guard_15': _framework_x19_load_guard_15,
+    'framework_x19_load_guard_16': _framework_x19_load_guard_16,
+    'framework_x19_load_guard_17': _framework_x19_load_guard_17,
 }
 
 

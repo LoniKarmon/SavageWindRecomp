@@ -789,6 +789,24 @@ SITES = [
     Site('resource_manager_removal_guard', 'code', 'b9431aa8 12800016', 0),
     Site('resource_manager_removal_guard_2', 'code', 'd63f0100 b9431aa8 7100051f 5400000b/ff00001f', 1),
     Site('resource_manager_rand_guard', 'code', '29402408 4a082d08 29412c0a 29002809 53087d09', 0),
+    # run68's never-built param subsystem (tools/patches.py param_array_*): boot passed the
+    # resource-manager family (run68 died deeper, deepest route yet: the registrar's whole
+    # param-table chain ran through the framework step f_700127d4d0's thunk) and died on signal
+    # 11 accessing 0x40: the dump's host pc f_7000f4b830+de pins the param array constructor's
+    # str x0, [x20, #0x40] at 0x7000f4b860 (the dump's lr exactly) -- the alloc thunk
+    # f_7000007c20 worked (the dump's x0 = a live block) but the object it stores into is 0
+    # (the dump's x20/x0 story): the giant builder thunk f_70015959c4 calls the array wrapper
+    # f_7000f4b8ac twice (0x7001595cb8/0x7001595cd4, its x0 = [[0x7001d6c5e8]]/[[0x7001d6f250]]
+    # -- the never-built subsystems' singleton pointers) with x19 = 0, and the ctor's first
+    # store faults. Both functions are void setup steps whose callers ignore the answer (the
+    # wrapper's bl return feeds only cbz w22, the thunk's returns are immediately clobbered),
+    # and the wrapper's own [x19, #8]/[x19, #0xc0]/[x19, #0x58] reads on the same null object
+    # would fault right after -- so both guard return at entry with x0 = 0 for an object off
+    # the guest map: with no subsystem object there is nothing to allocate into, the thunk
+    # carries on with its live heap and data cells, and with a real built subsystem both
+    # re-execute their spills untouched.
+    Site('param_array_ctor_guard', 'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd 2a0103f3 aa0203f5 aa0003f4 2a0103f6', 0),
+    Site('param_array_step_guard', 'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd aa0203f4 aa0303e2 2a0103f6 aa0003f3', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -939,6 +957,10 @@ OPTIONAL_GROUPS = [
      'resource_manager_removal_guard',  #  registration/removal siblings answers "nothing
      'resource_manager_removal_guard_2',#  registered" (0), and the never-built rng singleton
      'resource_manager_rand_guard'),    #  steps answer 0 -- actor floats garbage, boot goes on)
+    ('param_array_ctor_guard',          # (run68's fault family: the param subsystem singletons
+     'param_array_step_guard'),         #  are never built -- the builder thunk hands the array
+                                        #  ctor and its wrapper a null object, both void setup
+                                        #  steps return at entry -- nothing to allocate into)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1182,6 +1204,8 @@ KNOWN = {
         'resource_manager_removal_guard': 0x7000fcddc8,
         'resource_manager_removal_guard_2': 0x7000fcde68,
         'resource_manager_rand_guard': 0x7000eb6e7c,
+        'param_array_ctor_guard': 0x7000f4b830,
+        'param_array_step_guard': 0x7000f4b8ac,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

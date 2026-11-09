@@ -1763,6 +1763,38 @@ def _resource_manager_removal_guard_2(gen, a):
             "            sibling's nothing-removed ret -- its x20 reload answers 0) */")
 
 
+# The never-built param subsystem (game_sites.py param_array_* guards, tools/patches.py):
+# run68 cleared the resource-manager family and went deepest yet -- the registrar's param-table
+# chain ran through the framework step f_700127d4d0 into the giant builder thunk f_70015959c4 --
+# and died with signal 11 accessing 0x40: the dump's host pc f_7000f4b830+de pins the param
+# array constructor's str x0, [x20, #0x40] at 0x7000f4b860, the dump's guest lr exactly. The
+# alloc thunk f_7000007c20 worked (the dump's x0 is a live heap block) but the object it stores
+# into is 0: the builder thunk calls the array wrapper f_7000f4b8ac twice with x0 =
+# [[0x7001d6c5e8]] / [[0x7001d6f250]], the never-built subsystems' singleton pointers, and the
+# ctor's first store faults. Both steps are void setup whose callers ignore the answer (the
+# ctor's only caller is the wrapper, whose bl return feeds only a cbz w22 re-check; the
+# wrapper's two callers are the thunk, which clobbers x0 immediately), and the wrapper's own
+# [x19, #8] / [x19, #0xc0] / [x19, #0x58] reads on the same null object would fault next, so
+# both functions answer at entry with their callers' ignored answer 0 for an object off the
+# guest map: with no subsystem object there is nothing to allocate into, the thunk carries on
+# with its live heap and data cells. With a real built subsystem both re-execute their spill
+# prologues untouched (a skipped prologue is net-neutral: the epilogue restores sp either way).
+def _param_array_ctor_guard(gen, a):
+    assert _word(gen, a) == 0xa9bd7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x30]! (entry)
+    return ('{ if (x0 - 0x7000000000ull >= 0x320000000ull) { c->x[0] = 0ull; return; }'
+            ' uint64_t ea = sp_ - 48; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); sp_ = ea; }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x30]! (param array ctor: subsystem object'
+            " never built, the step's callers ignore its answer) */")
+
+
+def _param_array_step_guard(gen, a):
+    assert _word(gen, a) == 0xa9bd7bfd, hex(_word(gen, a))  # stp x29, x30, [sp, #-0x30]! (entry)
+    return ('{ if (x0 - 0x7000000000ull >= 0x320000000ull) { c->x[0] = 0ull; return; }'
+            ' uint64_t ea = sp_ - 48; ST64(ea, c->x[29]); ST64(ea + 8, x30); sp_ = ea; }'
+            f'  /* {a:#x}: stp x29, x30, [sp, #-0x30]! (param array step: subsystem singleton'
+            ' never built, the builder thunk ignores both returns) */')
+
+
 def _resource_manager_rand_guard(gen, a):
     assert _word(gen, a) == 0x29402408, hex(_word(gen, a))  # ldp w8, w9, [x0] (the rng state)
     assert _word(gen, a + 4) == 0x4a082d08, hex(_word(gen, a + 4))  # eor w8, w8, w8, lsl #11
@@ -1935,6 +1967,8 @@ PATCHES = {
     'resource_manager_removal_guard': _resource_manager_removal_guard,
     'resource_manager_removal_guard_2': _resource_manager_removal_guard_2,
     'resource_manager_rand_guard': _resource_manager_rand_guard,
+    'param_array_ctor_guard': _param_array_ctor_guard,
+    'param_array_step_guard': _param_array_step_guard,
 }
 
 

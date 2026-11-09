@@ -915,6 +915,19 @@ SITES = [
     # consumer reassigns x0 before use), and dispatches the flag probe untouched when x0 is
     # on the guest map.
     Site('entry_ready_flag_guard',      'code', '39402008 34000008/ff00001f d65f03c0 a9be7bfd f9000bf3 910003fd aa0003f3 94000000/fc000000', 0),
+    # The step query object's dirty "vtable" pair (tools/patches.py query_object_vtable_guard,
+    # query_object_vcall_guard): run75 cleared the ready-flag family -- the whole param chain
+    # answered and the framework step ran past bl #0x7001550dec -- and died with signal 11
+    # accessing 0: the dump's host pc f_700127d4d0+4558 objdump-pins mov 0x28(%rax),%rax, the
+    # lifted LD64(x8 + 0x28) of ldr x8, [x8, #0x28] at 0x700127eca0 (lr 0x700127ec98 exactly,
+    # the param step's return), the step's virtual probe of the query object: the ldr x8,
+    # [x22] at 0x700127ec98 read the never-built registration slot as the object -- a raw
+    # word -- and the "vtable" slot load faults on it. The ecb0 tail reloads x0 from [x23]
+    # and only branches on x21, so the blr x8's answer at 0x700127eca4 is ignored: the pair
+    # guards as a load-skip answering null plus the #35 dispatch-skip answering 0, and with a
+    # real Switch's registered object both re-execute untouched (on-map "vptr", on-map slot).
+    Site('query_object_vtable_guard',   'code', 'f9401508 d63f0100 f10006bf 54000000/ff00001f f94002e0 aa1503e1 94000000/fc000000 90000000/9f00001f', 0),
+    Site('query_object_vcall_guard',    'code', 'd63f0100 f10006bf 54000000/ff00001f f94002e0 aa1503e1 94000000/fc000000 90000000/9f00001f 91000000/ffc003ff', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -1114,6 +1127,11 @@ OPTIONAL_GROUPS = [
                                         #  guard returns the helper's own flag-set early
                                         #  ret with the ignored 0 the framework step
                                         #  overwrites with its next load)
+    ('query_object_vtable_guard',       # (run75's fault family: the step's query object is
+     'query_object_vcall_guard'),       #  the never-built registration slot read as a raw
+                                        #  word -- the "vtable" slot load faults and the
+                                        #  blr would dispatch to nothing -- the pair skips
+                                        #  to the ignored 0 the ecb0 tail reloads over)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1383,6 +1401,8 @@ KNOWN = {
         'entry_config_fill_guard': 0x700138e5b8,
         'param_delegate_invoke_guard': 0x7001550ee4,
         'entry_ready_flag_guard': 0x7001557a08,
+        'query_object_vtable_guard': 0x700127eca0,
+        'query_object_vcall_guard': 0x700127eca4,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

@@ -2100,6 +2100,41 @@ def _entry_ready_flag_guard(gen, a):
             ' ready object re-probes the byte untouched) */')
 
 
+# The step query object's dirty "vtable" pair (game_sites.py query_object_vtable_guard /
+# query_object_vcall_guard, tools/patches.py): run75 cleared the ready-flag family -- the
+# whole param chain answered and the framework step ran past bl #0x7001550dec to its virtual
+# probe -- and died with signal 11 accessing 0: the dump's host pc f_700127d4d0+4558
+# objdump-pins mov 0x28(%rax),%rax, the lifted LD64(x8 + 0x28) of ldr x8, [x8, #0x28] at
+# 0x700127eca0 (lr 0x700127ec98 exactly, the param step's return). The pair: ldr x8, [x22]
+# at 0x700127ec98 reads the never-built registration slot -- null where a registered
+# resource-manager query object belongs -- and the "vtable" slot load faults on it; the
+# blr x8 at 0x700127eca4 dispatches off the null slot's answer. The tail at 0x700127ecb0
+# reloads x0 from [x23] and only branches on x21, so the dispatch's answer is ignored: the
+# load guards as a load-skip answering null (x8 = 0, off-map by the idiom too), the dispatch
+# as the #35 dispatch-skip answering 0 -- the same "nothing registered" answer the
+# resource-manager family already established -- and with a real Switch's registered object
+# (on-map "vptr", on-map slot) both re-execute untouched.
+def _query_object_vtable_guard(gen, a):
+    assert _word(gen, a) == 0xf9401508, hex(_word(gen, a))  # ldr x8, [x8, #0x28] (the slot)
+    assert _word(gen, a + 4) == 0xd63f0100, hex(_word(gen, a + 4))  # blr x8 (the virtual probe)
+    assert _word(gen, a + 8) == 0xf10006bf, hex(_word(gen, a + 8))  # cmp x21, #1 (the tail)
+    return ('{ if (x8 - 0x7000000000ull >= 0x320000000ull) x8 = 0ull;'
+            ' else { uint64_t ea = x8 + 0x28ull; uint64_t v = LD64(ea); x8 = (uint64_t)(v); } }'
+            f'  /* {a:#x}: ldr x8, [x8, #0x28] (query object: the registration slot read null --'
+            ' the "vtable" slot load skips to 0, off-map for the dispatch below) */')
+
+
+def _query_object_vcall_guard(gen, a):
+    assert _word(gen, a) == 0xd63f0100, hex(_word(gen, a))  # blr x8 (the virtual probe)
+    assert _word(gen, a - 4) == 0xf9401508, hex(_word(gen, a - 4))  # ldr x8, [x8, #0x28] (the slot)
+    assert _word(gen, a + 4) == 0xf10006bf, hex(_word(gen, a + 4))  # cmp x21, #1 (the tail)
+    return ('{ if (x8 - 0x7000000000ull >= 0x320000000ull) x0 = 0ull;'
+            ' else { c->pc = x8; x30 = 0x700127eca8ull; c->x[0] = x0; c->x[8] = x8;'
+            ' c->x[30] = x30; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x30 = c->x[30]; } }'
+            f'  /* {a:#x}: blr x8 (query virtual: the null slot answers nothing-registered 0,'
+            ' the tail reloads x0 from [x23] and branches only on x21) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -2288,6 +2323,8 @@ PATCHES = {
     'entry_config_fill_guard': _entry_config_fill_guard,
     'param_delegate_invoke_guard': _param_delegate_invoke_guard,
     'entry_ready_flag_guard': _entry_ready_flag_guard,
+    'query_object_vtable_guard': _query_object_vtable_guard,
+    'query_object_vcall_guard': _query_object_vcall_guard,
 }
 
 

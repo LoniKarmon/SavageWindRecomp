@@ -1559,6 +1559,46 @@ def _fs_state_query_guard_2(gen, a):
             f'  /* {a:#x}: stp x29, x30, [sp, #-0x30]! (fs state query 2: null state, guarded to 0) */')
 
 
+# The sead framework swap the physics step runs on its never-built table (game_sites.py
+# framework_swap_guard, tools/patches.py): run64's fault -- boot went deeper than ever (past the fs
+# families, into physics/system init, the dump's x6/x7 spelling "Physics/System/S") -- and the swap
+# helper f_7000ec9990 (21 bl callers: 11 physics-config, 3 in the step f_7000eeaff8, 7 elsewhere; no
+# tail branches) converts a word array through the framework's slot table: x9 = [0x7001d6e960] (the
+# sead framework global, never constructed here: run64's dump x9 = 0x6e0bebe98, a stale host pointer
+# in dirty memory), x21 = [[x9 + 8·bit] + 0x20], then per word ldr w0, [x19] + blr x21 + str w0,
+# [x19], #4. The dump's x21 = 0x7af992ff12 (same dirty value, > GUEST_HI, unmapped): the loop's first
+# ldr w0, [x19] faults at exactly the dump's accessed 0x7af992ff12, host pc f_7000ec9990+b0. One
+# entry guard for every caller: the table or the array off the guest map (the stale_actor guards'
+# range idiom) means the framework was never built -- nothing to convert -- so the helper answers by
+# its own early return (the b.lt ret, the shape a zero word count takes, which all its callers
+# tolerate). The step f_7000eeaff8 needs its own guard too: its three bls pass x1 = x1 + dirty
+# field-sums (run64's x27 = x20 + x23 landed on the dirty 0x7af992ff12), and its loop re-reads the
+# array itself after every helper return (bl 0x7000eeb0c0 then ldr w8, [x21], cmp w25, w24, b.lo --
+# a dirty w24 = [x1+0x2c] count would re-read the junk base forever, faulting again at the same
+# address). Its guard replaces the count load: a base off the guest map answers the count 0 and
+# jumps to the cbz's existing target L_7000eeb0d8 -- the step's own "nothing to convert" tail (set
+# the parsed flag at [x1+8], carry on to the entry list); otherwise the guard re-executes the load.
+def _framework_swap_guard(gen, a):
+    assert _word(gen, a) == 0xd342fc48, hex(_word(gen, a))  # lsr x8, x2, #2 (the word count, entry)
+    assert _word(gen, a + 0x24) == 0xf944b129, hex(_word(gen, a + 0x24))  # ldr x9, [x9, #0x960] (the global)
+    return ('{ uint64_t g = LD64(0x7001d6e960ull);'
+            ' if (g - 0x7000000000ull >= 0x320000000ull || c->x[1] - 0x7000000000ull >= 0x320000000ull)'
+            ' { return; }'
+            ' x8 = (uint64_t)(ROR64(c->x[2], 2) & 0x3fffffffffffffffull); }'
+            f'  /* {a:#x}: lsr x8, x2, #2 (sead framework swap: table never built, guarded to nothing converted) */')
+
+
+def _physics_cfg_entry_guard(gen, a):
+    assert _word(gen, a - 4) == 0xf9400261, hex(_word(gen, a - 4))  # ldr x1, [x19] (the config struct)
+    assert _word(gen, a) == 0xb9402c38, hex(_word(gen, a))  # ldr w24, [x1, #0x2c] (the loop count)
+    assert _word(gen, a + 4) == 0x34000198, hex(_word(gen, a + 4))  # cbz w24, #0x7000eeb0d8 (the count-0 tail)
+    return ('{ if (c->x[27] - 0x7000000000ull >= 0x320000000ull)'
+            ' { c->x[24] = 0ull; goto L_7000eeb0d8; }'
+            ' uint64_t ea = x1 + 0x2cull; uint64_t v = LD32(ea); c->x[24] = (uint64_t)(v); }'
+            f'  /* {a:#x}: ldr w24, [x1, #0x2c] (physics config step: array base off the guest map,'
+            ' guarded to the count-0 tail) */')
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -1707,6 +1747,8 @@ PATCHES = {
     'fs_state_accessor_guard_2': _fs_state_accessor_guard_2,
     'fs_state_query_guard': _fs_state_query_guard,
     'fs_state_query_guard_2': _fs_state_query_guard_2,
+    'framework_swap_guard': _framework_swap_guard,
+    'physics_cfg_entry_guard': _physics_cfg_entry_guard,
 }
 
 

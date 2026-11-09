@@ -686,6 +686,31 @@ SITES = [
          'aa0103f4 2a0203f5 2a0203e1 aa1403e2 94000516', 0),
     Site('fs_state_query_guard_2', 'code', 'a9bd7bfd f9000bf5 a9024ff4 910003fd aa0003f5 f9400400 '
          'aa0103f4 94000578', 0),
+    # run64's never-built sead framework family (tools/patches.py framework_swap_guard and
+    # physics_cfg_entry_guard): the deepest boot yet -- past the fs families, into physics/system init
+    # (the dump's x6/x7 spell "Physics/System/S", the frames 7001572xxx are the config step) -- and
+    # signal 11 accessing 0x7af992ff12 at the dump's host pc f_7000ec9990+b0: that helper converts a
+    # word array through the framework's slot table -- x9 = [0x7001d6e960] (the sead framework's
+    # global, never constructed on our machine: run64's dump x9 = 0x6e0bebe98, a stale host pointer,
+    # dirty memory), x21 = [[x9 + 8·bit] + 0x20], then for every word: ldr w0, [x19] + blr x21 +
+    # str w0, [x19], #4 -- the dump's x21 = 0x7af992ff12 (the same dirty value, > GUEST_HI,
+    # unmapped): the loop's first ldr w0, [x19] faults at exactly the dump address, x19 = the array
+    # x1 = 0x7af992ff12. The sweep: the helper has 21 bl callers (11 in the physics-config region
+    # 0x7000ec93xx-0x7000ec98xx, 3 in the step f_7000eeaff8, 7 elsewhere) and no tail branches --
+    # one entry guard covers them all: the framework global or the array pointer off the guest map
+    # (the stale_actor guards' range idiom) means the table was never built, so there is nothing to
+    # convert and the helper answers by its own early return (its b.lt ret answers without touching
+    # the array for a zero word count -- the same "nothing converted" shape its callers tolerate).
+    # The guard alone is not enough for the step: its three bls pass x1 = x1 + dirty field-sums --
+    # x27 = x20 + x23 lands on the dirty 0x7af992ff12 too -- and its own loop re-reads the array
+    # after the helper returns (bl 0x7000eeb0c0 then ldr w8, [x21], cmp w25, w24, b.lo -- a dirty
+    # w24 = [x1+0x2c] count re-reads the junk base forever, and the first re-read faults again at
+    # 0x7af992ff12). Guard the step's loop at its count load: a base off the guest map answers the
+    # count 0 its own cbz path already takes (goto L_7000eeb0d8, the existing label -- the step's
+    # "no words to convert" tail: set the parsed flag at [x1+8] and carry on to its entry list).
+    Site('framework_swap_guard', 'code', 'd342fc48 7100051f 540002ab/ff00001f a9bd7bfd f9000bf5 '
+         'a9024ff4 910003fd b0007529 2a2003e8 f944b129', 0),
+    Site('physics_cfg_entry_guard', 'code', 'f9400261 b9402c38 34000018/ff00001f', 1),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -814,6 +839,12 @@ OPTIONAL_GROUPS = [
      'fs_state_query_guard',        #  chain and the thunk's ldr x0, [x0, #8] faulted at 0x8 -- the
      'fs_state_query_guard_2'),     #  sweep's four dereference sites all answer the established
                                     #  neutral 0 at the entry (tag-4 handle index 0, query flag miss)
+    ('framework_swap_guard',        # (run64's fault family: physics/system init ran on the sead
+     'physics_cfg_entry_guard'),    #  framework's global never built -- the swap helper's table and
+                                    #  the config step's array base are both off the guest map (the
+                                    #  dump's 0x6e0bebe98 and 0x7af992ff12): the helper answers its
+                                    #  own "nothing converted" early return, the step its count-0
+                                    #  tail -- the parsed flag still gets set, the entry list runs)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1043,6 +1074,8 @@ KNOWN = {
         'fs_state_accessor_guard_2': 0x700007e044,
         'fs_state_query_guard': 0x700007e36c,
         'fs_state_query_guard_2': 0x700007e3e0,
+        'framework_swap_guard': 0x7000ec9990,
+        'physics_cfg_entry_guard': 0x7000eeb0a4,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

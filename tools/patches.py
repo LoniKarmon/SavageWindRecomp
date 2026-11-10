@@ -2177,6 +2177,58 @@ def _tail_load_guard(off, w_pin, note):
 _STP30 = '{ uint64_t ea = sp_ - 48; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); sp_ = ea; }'
 _STP30X = '{ uint64_t ea = sp_ - 48; ST64(ea, c->x[29]); ST64(ea + 8, x30); sp_ = ea; }'
 
+# The framework step's node-builder chain (game_sites.py node_build_*/lockmgr_*/pushmgr_*/
+# step_node_*/node_init_*/list_clear_* guards, tools/patches.py): run77 cleared the log_tail
+# family -- the step ran from its post-chain block to its bl #0x7000003f10 node-builder --
+# and died with signal 11 accessing 0: the dump's host pc f_7000003f10+184 objdump-pins the
+# 4354 block's second LD64 (ldr x8, [x19] then ldr x8, [x8, #0x80] at 0x7000004354/0x7000004360
+# -- the never-built registry hands the builder its object as a raw rodata string, the dump:
+# x19 = 0x70015e615b, so its first word is an ASCII cell and the "vtable" slot load faults).
+# The static sweep shows the same root cause through the whole chain: the builder's factory/
+# lock/push paths double-deref static-link addend words (.data slots at [0x7001d69430]/
+# [0x7001d6af80] holding file-relative pointers, off-map to the recompiler), the answered
+# 0-node flows into the step's ldr x8, [x21] / ldr x8, [x8, #0x28] / blr x8 probe pair, and
+# the node registrar f_700127efe0 and 256-entry list-clear f_700127f150 deref their null/
+# addend singletons and store flags through off-map slots. The three factories below skip
+# one guest load or store when its base pointer is off the guest map (answering the lifted
+# destination with 0) and re-execute it byte-identical otherwise -- the #31 off-map idiom --
+# and the blr sites skip their dispatch answering 0 (the #35/#39 form) into code that ignores
+# the answer or is itself guarded: off-map OR not a lifted function (run78 cleared the
+# ASCII-vtable fault, but its init-time caller's real object's slot held the unrelocated
+# addend 0x70016574c2 -- on-map yet odd/tagged, a dispatch FATAL through the range check
+# alone -- so the probe now consults dispatch_lookup, NULL for any address that is no
+# recompiled function, which a real Switch's relocated slot always is), so a real Switch's
+# built chain never differs.
+def _offmap_load_guard(w, cond, dst, ea, ld, note):
+    def guard(gen, a):
+        assert _word(gen, a) == w, hex(_word(gen, a))
+        return ('{' + f' if ({cond} - 0x7000000000ull >= 0x320000000ull) {dst} = 0ull;'
+                f' else {{ uint64_t ea = {ea}; uint64_t v = {ld}(ea); {dst} = (uint64_t)(v);'
+                f' }} }}'
+                f'  /* {a:#x}: {note} */')
+    return guard
+
+
+def _offmap_store_guard(w, cond, ea, st, src, note):
+    def guard(gen, a):
+        assert _word(gen, a) == w, hex(_word(gen, a))
+        return ('{' + f' if ({cond} - 0x7000000000ull >= 0x320000000ull);'
+                f' else {{ uint64_t ea = {ea}; {st}(ea, {src}); }} }}'
+                f'  /* {a:#x}: {note} */')
+    return guard
+
+
+def _offmap_blr_guard(disp, note, cond='x8', answer='c->x[0] = 0ull'):
+    def guard(gen, a):
+        assert _word(gen, a) == 0xd63f0100, hex(_word(gen, a))  # blr x8 (the virtual probe)
+        return ('{ extern GuestFn dispatch_lookup(uint64_t);'
+                f' if ({cond} - 0x7000000000ull >= 0x320000000ull || !dispatch_lookup({cond}))'
+                f' {answer};'
+                f' else {{ {disp} }} }}'
+                f'  /* {a:#x}: {note} */')
+    return guard
+
+
 
 PATCHES = {
     'lookat_update': _lookat_update,
@@ -2424,6 +2476,126 @@ PATCHES = {
                                                         'null param-value singleton slot then ldr x0, [x8] before value publish'),
     'log_tail_slot_load_guard_3':      _tail_load_guard(4,  0xf9400268,
                                                         'null flag singleton slot then ldr x0, [x8] before flag format'),
+    # The framework step's node-builder chain (see the _offmap_load_guard comment above):
+    # the node-builder thunk f_7000003f10 -- 5 load-skips on its object/"vtable"/factory
+    # derefs (the object arrives as the never-built registry's raw string, the factory slot
+    # reads a static-link addend) + the 2 dispatch-skips its clone-virtuals answer 0 into
+    # (4490 reloads over, 4914 -> 3f48 b.lo 44d4 -> returns the answered 0 node).
+    'node_build_obj_load_guard':       _offmap_load_guard(0xf9400268, 'c->x[19]', 'x8', 'c->x[19] + 0x0ull', 'LD64',
+                                                          'builder object word: off-map name word answers 0 vtable'),
+    'node_build_vtable_load_guard':    _offmap_load_guard(0xf9401908, 'x8', 'x8', 'x8 + 0x30ull', 'LD64',
+                                                          'builder clone-vtable slot off the ASCII word'),
+    'node_build_factory_load_guard':   _offmap_load_guard(0xf940010d, 'x8', 'c->x[13]', 'x8 + 0x0ull', 'LD64',
+                                                          'builder factory slot [0x7001d69430] addend then ldr x13, [x8]'),
+    'node_build_obj_load_guard_2':     _offmap_load_guard(0xf9400268, 'c->x[19]', 'x8', 'c->x[19] + 0x0ull', 'LD64',
+                                                          'builder 4354-block object word answers 0 vtable'),
+    'node_build_vtable_load_guard_2':  _offmap_load_guard(0xf9404108, 'x8', 'x8', 'x8 + 0x80ull', 'LD64',
+                                                          'builder 4354-block vtable slot off the ASCII word (run77)'),
+    'node_build_factory_load_guard_2': _offmap_load_guard(0xf9400100, 'x8', 'c->x[0]', 'x8 + 0x0ull', 'LD64',
+                                                          'builder factory slot addend then ldr x0, [x8] for the lock thunk'),
+    'node_build_vtable_blr_guard':     _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000004490ull; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10;'
+        ' c->x[12] = x12; c->x[21] = x21; c->sp = sp_; rt_dispatch(c); x8 = c->x[8]; x9 = c->x[9];'
+        ' x10 = c->x[10]; x12 = c->x[12];',
+        'builder clone-virtual on the answered 0 vtable: 4490 reloads x1 and 449c takes x21 = x0'
+        ' = 0 -> 40ac cbz x21 -> 4338 returns the 0 node'),
+    'node_build_vtable_blr_guard_2':   _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x700000490cull; c->x[8] = x8; c->x[9] = x9; c->x[21] = x21;'
+        ' c->sp = sp_; rt_dispatch(c); x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10]; x12 = c->x[12];',
+        'builder vtable-slot-miss virtual on the answered 0: 4914 x22 = x0 = 0 -> 3f48 b.lo'
+        ' 44d4 -> returns the 0 node'),
+    # The two alloc/lock thunks f_7000ea3c44 / f_7000ea3c88: their manager slot
+    # [0x7001d6af80] reads a static addend, so the head/key loads, the pop load and the
+    # push store skip; the thunks return 0 / leave the list untouched, which the builder's
+    # 4470 cbnz and the registrar's guarded loads both handle.
+    'lockmgr_head_load_guard':         _offmap_load_guard(0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+                                                          'lock thunk manager slot [0x7001d6af80] addend then ldr x8, [x8]'),
+    'lockmgr_key_load_guard':          _offmap_load_guard(0xb9408900, 'x8', 'x0', 'x8 + 0x88ull', 'LD32',
+                                                          'lock thunk key load on the answered-0 manager'),
+    'lockmgr_pop_load_guard':          _offmap_load_guard(0xf9400100, 'x8', 'x0', 'x8 + 0x0ull', 'LD64',
+                                                          'lock thunk list pop answering the empty list 0'),
+    'pushmgr_head_load_guard':         _offmap_load_guard(0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+                                                          'push thunk manager slot addend then ldr x8, [x8]'),
+    'pushmgr_key_load_guard':          _offmap_load_guard(0xb9408900, 'x8', 'x0', 'x8 + 0x88ull', 'LD32',
+                                                          'push thunk key load on the answered-0 manager'),
+    'pushmgr_slot_load_guard':         _offmap_load_guard(0xf9405808, 'x0', 'x8', 'x0 + 0xb0ull', 'LD64',
+                                                          'push thunk old-head load answering the empty list 0'),
+    'pushmgr_slot_store_guard':        _offmap_store_guard(0xf9005813, 'x0', 'x0 + 0xb0ull', 'ST64', 'x19',
+                                                          'push thunk list-link store through the answered-0 head'),
+    # The step's own probe pair on the builder's answered 0 node: the virtual answer is
+    # dead (eea0 reloads x0 from x20), so the pair skips answering 0 into the log tail.
+    'step_node_load_guard':            _offmap_load_guard(0xf94002a8, 'x21', 'x8', 'x21 + 0x0ull', 'LD64',
+                                                          'step node word on the builder answered 0 node'),
+    'step_node_vtable_guard':          _offmap_load_guard(0xf9401508, 'x8', 'x8', 'x8 + 0x28ull', 'LD64',
+                                                          'step node vtable slot 0x28 on the answered 0 word'),
+    'step_node_vcall_guard':           _offmap_blr_guard(
+        'c->pc = x8; x30 = 0x700127eea0ull; c->x[0] = x0; c->x[8] = x8; c->x[30] = x30;'
+        ' rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x30 = c->x[30];',
+        'step node virtual probe on the answered 0 slot: eea0 reloads x0 from x20, the answer'
+        ' is dead', answer='x0 = 0ull'),
+    # The node registrar f_700127efe0 on the answered 0 node (its cbz x0 skips to the
+    # w19 = 1 tail): its factory/log/gadget/alloc/registry slot double-derefs skip to 0 and
+    # its four flag stores to null-slot addends skip, and the tail's cmp x19, #1 branch to
+    # the epilogue means f124 only runs in a built chain anyway.
+    'node_init_slot_load_guard':       _offmap_load_guard(0xf94002c0, 'c->x[22]', 'x0', 'c->x[22] + 0x0ull', 'LD64',
+                                                          'registrar factory slot [0x7001d69430] addend then ldr x0, [x22]'),
+    'node_init_log_load_guard':        _offmap_load_guard(0xf9400115, 'x8', 'c->x[21]', 'x8 + 0x0ull', 'LD64',
+                                                          'registrar log slot [0x7001d76990] addend then ldr x21, [x8]'),
+    'node_init_gadget_load_guard':     _offmap_load_guard(0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+                                                          'registrar gadget slot [0x7001d76c90] addend then ldr x8, [x8]'),
+    'node_init_alloc_load_guard':      _offmap_load_guard(0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+                                                          'registrar alloc manager slot addend then ldr x8, [x8]'),
+    'node_init_alloc_load_guard_2':    _offmap_load_guard(0xf9404108, 'x8', 'x8', 'x8 + 0x80ull', 'LD64',
+                                                          'registrar alloc chain ldr x8, [x8, #0x80] on the answered 0'),
+    'node_init_alloc_load_guard_3':    _offmap_load_guard(0xb940d108, 'x8', 'x8', 'x8 + 0xd0ull', 'LD32',
+                                                          'registrar alloc flag word on the answered 0'),
+    'node_init_registry_load_guard':   _offmap_load_guard(0xf9400100, 'x8', 'x0', 'x8 + 0x0ull', 'LD64',
+                                                          'registrar registry slot [0x7001d66dd0] addend then ldr x0, [x8]'),
+    'node_init_flag_store_guard':      _offmap_store_guard(0xb900011f, 'x8', 'x8 + 0x0ull', 'ST32', '0u',
+                                                          'registrar flag store through the slot addend 0x1e93910'),
+    'node_init_flag_store_guard_2':    _offmap_store_guard(0xb9000137, 'x9', 'x9 + 0x0ull', 'ST32', '(uint32_t)c->x[23]',
+                                                          'registrar flag store 2 through the slot addend'),
+    'node_init_flag_store_guard_3':    _offmap_store_guard(0xb9000158, 'x10', 'x10 + 0x0ull', 'ST32', '(uint32_t)c->x[24]',
+                                                          'registrar flag store 3 through the slot addend'),
+    'node_init_flag_store_guard_4':    _offmap_store_guard(0xb9000109, 'x8', 'x8 + 0x0ull', 'ST32', '(uint32_t)x9',
+                                                          'registrar flag store 4 through the slot addend'),
+    'node_init_slot_load_guard_2':     _offmap_load_guard(0xf94002c0, 'c->x[22]', 'x0', 'c->x[22] + 0x0ull', 'LD64',
+                                                          'registrar tail factory slot addend then ldr x0, [x22] before push'),
+    # The 256-entry list-clear f_700127f150: its singleton [0x7001d66458] reads a static
+    # addend and the manager-buffer slot [0x7001e44f00+0xf00] is still null before the
+    # step's own alloc, so both loop bodies skip their vtable pair, virtuals (answered 0
+    # feeds only guarded code), head/name loads, the name scan, the count load and the
+    # strbuf terminator store; a built singleton/allocated buffer re-executes byte-identical.
+    'list_clear_buf_load_guard':       _offmap_load_guard(0xf9427754, 'x26', 'c->x[20]', 'x26 + 0x4e8ull', 'LD64',
+                                                          'clear loop entry field on the not-yet-allocated manager buffer'),
+    'list_clear_vtable_load_guard':    _offmap_load_guard(0xf9400268, 'x19', 'x8', 'x19 + 0x0ull', 'LD64',
+                                                          'clear loop singleton [0x7001d66458] addend then ldr x8, [x19]'),
+    'list_clear_vtable_load_guard_2':  _offmap_load_guard(0xf9400d08, 'x8', 'x8', 'x8 + 0x18ull', 'LD64',
+                                                          'clear loop vtable slot 0x18 on the answered 0 word'),
+    'list_clear_vcall_guard':          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x700127f1a0ull; c->x[8] = x8; c->x[19] = x19; c->x[22] = x22;'
+        ' c->x[25] = x25; c->x[26] = x26; c->sp = sp_; rt_dispatch(c); x8 = c->x[8];',
+        'clear loop virtual 1 on the answered 0 vtable: the answer is dead (f1a0 reloads)'),
+    'list_clear_head_load_guard':      _offmap_load_guard(0xf9400675, 'x19', 'c->x[21]', 'x19 + 0x8ull', 'LD64',
+                                                          'clear loop name head on the addend singleton'),
+    'list_clear_vtable_load_guard_3':  _offmap_load_guard(0xf9400268, 'x19', 'x8', 'x19 + 0x0ull', 'LD64',
+                                                          'clear loop 2nd-body singleton then ldr x8, [x19]'),
+    'list_clear_vtable_load_guard_4':  _offmap_load_guard(0xf9400d08, 'x8', 'x8', 'x8 + 0x18ull', 'LD64',
+                                                          'clear loop 2nd-body vtable slot 0x18 on the answered 0'),
+    'list_clear_vcall_guard_2':        _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x700127f1c0ull; c->x[8] = x8; c->x[26] = x26;'
+        ' rt_dispatch(c); x8 = c->x[8];',
+        'clear loop virtual 2 on the answered 0 vtable: the answer is dead (f1c0 reloads)'),
+    'list_clear_head_load_guard_2':    _offmap_load_guard(0xf9400669, 'x19', 'c->x[9]', 'x19 + 0x8ull', 'LD64',
+                                                          'clear loop 2nd-body name head on the addend singleton'),
+    'list_clear_name_load_guard':      _offmap_load_guard(0x3868692a, 'c->x[9]', 'c->x[10]', 'c->x[9] + x8', 'LD8',
+                                                          'clear loop name scan on the answered-0 head answers end-of-name'),
+    'list_clear_count_load_guard':     _offmap_load_guard(0xb9401349, 'x26', 'c->x[9]', 'x26 + 0x10ull', 'LD32',
+                                                          'clear loop count on the not-yet-allocated manager buffer'),
+    'list_clear_name_store_guard':     _offmap_store_guard(0x383aca9f, 'c->x[20]',
+                                                           'c->x[20] + (uint64_t)(int64_t)(int32_t)x26',
+                                                           'ST8', '0u',
+                                                          'clear loop terminator store through the answered-0 entry field'),
 }
 
 

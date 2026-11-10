@@ -971,6 +971,70 @@ SITES = [
     Site('log_tail_slot_load_guard',        'code', 'f9400100 94000000/fc000000 aa1503e0 94000000/fc000000 f9400668 b4000128 b0001df5', 0),
     Site('log_tail_slot_load_guard_2',      'code', 'f9400100 94000000/fc000000 aa1503e0 94000000/fc000000 d0001cd5 912106b5 aa1503e0', 0),
     Site('log_tail_slot_load_guard_3',      'code', 'f9400100 f9400268 f90007e8 94000000/fc000000 aa1403e0 94000000/fc000000 90001e54', 0),
+    # The framework step's node-builder chain (tools/patches.py node_build_*/lockmgr_*/
+    # pushmgr_*/step_node_*/node_init_*/list_clear_* guards): run77 cleared the whole
+    # log_tail family -- the step ran from its post-chain block to its bl #0x7000003f10
+    # node-builder -- and died with signal 11 accessing 0: the dump's host pc
+    # f_7000003f10+184 objdump-pins the second LD64 of the 4354 block (ldr x8, [x19] then
+    # ldr x8, [x8, #0x80] at 0x7000004354/0x7000004360): the never-built registry hands the
+    # step's node-builder call its object as a raw rodata string (the dump: x19 =
+    # 0x70015e615b), so its first word is an ASCII cell and the "vtable" slot load faults.
+    # The static sweep of the chain shows the same never-built-registry root cause
+    # everywhere: the builder's factory/lock/push paths double-deref static-link addend
+    # words ([0x7001d69430], [0x7001d6af80]: .data slots holding file-relative pointers,
+    # off-map to the recompiler) and its answered 0-node flows into the step's own
+    # ldr x8, [x21] / ldr x8, [x8, #0x28] / blr x8 probe pair at 0x700127ee90-0x700127ee9c,
+    # into the node registrar f_700127efe0's slot double-derefs and its null-slot flag
+    # stores, and into the 256-entry list-clear f_700127f150's null-singleton loop (its
+    # manager-buffer slot [0x7001e44f00] still null before the step's own alloc). The 42
+    # guards answer 0/skip-store exactly when the base pointer is off the guest map, so a
+    # real Switch's built chain (on-map object, relocated slot, built loop singleton)
+    # re-executes every guarded line byte-identical, and the answers are all consumed by
+    # guarded-off-map code or ignored (the builder returns x21 = 0, the step pair's
+    # virtual answer is dead, the clear loop's virtual/strbuf answers feed only its own
+    # guarded loads).
+    Site('node_build_obj_load_guard',       'code', 'f9400268 1b157ca2 d503201f 10000009/9f00001f f9401908 eb09011f 54000001/ff00001f 90000008/9f00001f', 0),
+    Site('node_build_vtable_load_guard',    'code', 'f9401908 eb09011f 54000001/ff00001f 90000008/9f00001f 7100005f f9400108/ffc003ff f940010d 5a825448', 0),
+    Site('node_build_factory_load_guard',   'code', 'f940010d 5a825448 51000509 6a09011f 54000001/ff00001f 7941b268 37000008/fff8001f aa1f03e9', 0),
+    Site('node_build_obj_load_guard_2',     'code', 'f9400268 90000009/9f00001f 91000129/ffc003ff f9404108 eb09011f 54000001/ff00001f 710002bf 5a9556b6', 0),
+    Site('node_build_vtable_load_guard_2',  'code', 'f9404108 eb09011f 54000001/ff00001f 710002bf 5a9556b6 510006c9 6a0902df 54000001/ff00001f', 0),
+    Site('node_build_factory_load_guard_2', 'code', 'f9400100 94000000/fc000000 f9400fa1 2a1303e5 aa0003f3 b5000000/ff00001f 14000000/fc000000 aa1303e0', 0),
+    Site('node_build_vtable_blr_guard',     'code', 'd63f0100 f9400fa1 aa1503e4 2a1603e5 aa0003f5 14000000/fc000000 b400000d/ff00001f f94009a0', 0),
+    Site('node_build_vtable_blr_guard_2',   'code', 'd63f0100 f9400fa1 2a1603e5 aa0003f6 14000000/fc000000 9102e260 91026277 f9000fa1', 0),
+    Site('lockmgr_head_load_guard',         'code', 'f9400108 b9408900 94000000/fc000000 9102c008 91002269 f9400bf3 f100001f 9a880128', 0),
+    Site('lockmgr_key_load_guard',          'code', 'b9408900 94000000/fc000000 9102c008 91002269 f9400bf3 f100001f 9a880128 f9400100', 0),
+    Site('lockmgr_pop_load_guard',          'code', '9a880128 f9400100 a8c27bfd d65f03c0', 1),
+    Site('pushmgr_head_load_guard',         'code', 'f9400108 b9408900 94000000/fc000000 f9405808 f9005813 aa0803e0 f9400bf3 a8c27bfd', 0),
+    Site('pushmgr_key_load_guard',          'code', 'b9408900 94000000/fc000000 f9405808 f9005813 aa0803e0 f9400bf3 a8c27bfd d65f03c0', 0),
+    Site('pushmgr_slot_load_guard',         'code', 'f9405808 f9005813 aa0803e0 f9400bf3 a8c27bfd d65f03c0', 0),
+    Site('pushmgr_slot_store_guard',        'code', 'f9005813 aa0803e0 f9400bf3 a8c27bfd d65f03c0', 0),
+    Site('step_node_load_guard',            'code', 'f94002a8 aa1503e0 f9401508 d63f0100 aa1403e0 94000000/fc000000 90000014/9f00001f 91000294/ffc003ff', 0),
+    Site('step_node_vtable_guard',          'code', 'f9401508 d63f0100 aa1403e0 94000000/fc000000 90000014/9f00001f 91000294/ffc003ff aa1403e0 94000000/fc000000', 0),
+    Site('step_node_vcall_guard',           'code', 'd63f0100 aa1403e0 94000000/fc000000 90000014/9f00001f 91000294/ffc003ff aa1403e0 94000000/fc000000 f9400260', 0),
+    Site('node_init_slot_load_guard',       'code', 'f94002c0 aa1403e1 94000000/fc000000 aa0003f3 aa1403e0 94000000/fc000000 aa1403e0 94000000/fc000000', 0),
+    Site('node_init_log_load_guard',        'code', 'f9400115 910043e8 91004129 91002100 f9000fe9 a9002be9 94000000/fc000000 90000008/9f00001f', 0),
+    Site('node_init_gadget_load_guard',     'code', 'f9400108 91008108 f90017e8 90000008/9f00001f f9400108/ffc003ff f9400108 f9404108 b940d108', 0),
+    Site('node_init_alloc_load_guard',      'code', 'f9400108 f9404108 b940d108 b90003e8 94000000/fc000000 b90007e0 aa1503e0 52800041', 0),
+    Site('node_init_alloc_load_guard_2',    'code', 'f9404108 b940d108 b90003e8 94000000/fc000000 b90007e0 aa1503e0 52800041 52800058', 0),
+    Site('node_init_alloc_load_guard_3',    'code', 'b940d108 b90003e8 94000000/fc000000 b90007e0 aa1503e0 52800041 52800058 94000000/fc000000', 0),
+    Site('node_init_registry_load_guard',   'code', 'f9400100 94000000/fc000000 90000008/9f00001f 90000009/9f00001f f9400108/ffc003ff f9400129/ffc003ff 9000000a/9f00001f f100067f', 0),
+    Site('node_init_flag_store_guard',      'code', 'b900011f b9000137 90000008/9f00001f 52800089 f9400108/ffc003ff b9000158 b9000109 54000000/ff00001f', 0),
+    Site('node_init_flag_store_guard_2',    'code', 'b9000137 90000008/9f00001f 52800089 f9400108/ffc003ff b9000158 b9000109 54000000/ff00001f f94002c0', 0),
+    Site('node_init_flag_store_guard_3',    'code', 'b9000158 b9000109 54000000/ff00001f f94002c0 aa1303e1 94000000/fc000000 a9464ff4 a94557f6', 0),
+    Site('node_init_flag_store_guard_4',    'code', 'b9000109 54000000/ff00001f f94002c0 aa1303e1 94000000/fc000000 a9464ff4 a94557f6 a9445ff8', 0),
+    Site('node_init_slot_load_guard_2',     'code', 'f94002c0 aa1303e1 94000000/fc000000 a9464ff4 a94557f6 a9445ff8 a9437bfd 9101c3ff', 0),
+    Site('list_clear_buf_load_guard',       'code', 'f9427754 d63f0100 f9400675 eb15029f 54000000/ff00001f f9400268 aa1303e0 9113835a', 0),
+    Site('list_clear_vtable_load_guard',    'code', 'f9400268 f9400d08 f9427754 d63f0100 f9400675 eb15029f 54000000/ff00001f f9400268', 0),
+    Site('list_clear_vtable_load_guard_2',  'code', 'f9400d08 f9427754 d63f0100 f9400675 eb15029f 54000000/ff00001f f9400268 aa1303e0', 0),
+    Site('list_clear_vcall_guard',          'code', 'd63f0100 f9400675 eb15029f 54000000/ff00001f f9400268 aa1303e0 9113835a f9400d08', 0),
+    Site('list_clear_head_load_guard',      'code', 'f9400675 eb15029f 54000000/ff00001f f9400268 aa1303e0 9113835a f9400d08 d63f0100', 0),
+    Site('list_clear_vtable_load_guard_3',  'code', 'f9400268 aa1303e0 9113835a f9400d08 d63f0100 f9400669 aa1f03e8 3868692a', 0),
+    Site('list_clear_vtable_load_guard_4',  'code', 'f9400d08 d63f0100 f9400669 aa1f03e8 3868692a 3400000a/ff00001f 91000508 eb19011f', 0),
+    Site('list_clear_vcall_guard_2',        'code', 'd63f0100 f9400669 aa1f03e8 3868692a 3400000a/ff00001f 91000508 eb19011f 54000001/ff00001f', 0),
+    Site('list_clear_head_load_guard_2',    'code', 'f9400669 aa1f03e8 3868692a 3400000a/ff00001f 91000508 eb19011f 54000001/ff00001f 2a1f03e8', 0),
+    Site('list_clear_name_load_guard',      'code', '3868692a 3400000a/ff00001f 91000508 eb19011f 54000001/ff00001f 2a1f03e8 b9401349 aa1403e0', 0),
+    Site('list_clear_count_load_guard',     'code', 'b9401349 aa1403e0 aa1503e1 5100052a 6b09011f 1a8ab11a 93407f42 94000000/fc000000', 0),
+    Site('list_clear_name_store_guard',     'code', '383aca9f 910006d6 f10402df 54000001/ff00001f a9444ff4 a94357f6 a9425ff8 a94167fa', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -1198,6 +1262,48 @@ OPTIONAL_GROUPS = [
      'log_tail_slot_load_guard',
      'log_tail_slot_load_guard_2',
      'log_tail_slot_load_guard_3'),
+    ('node_build_obj_load_guard',        # (run77's fault family, full-chain sweep: the step's
+     'node_build_vtable_load_guard',     #  node-builder bl #0x7000003f10 probe-derefs the
+     'node_build_factory_load_guard',    #  never-built registry's raw rodata string as an
+     'node_build_obj_load_guard_2',      #  object ("vtable" first word = ASCII), and the
+     'node_build_vtable_load_guard_2',   #  answered 0-node / static-addend factory and
+     'node_build_factory_load_guard_2',  #  lock-mgr slots ([0x7001d69430], [0x7001d6af80],
+     'node_build_vtable_blr_guard',      #  .data file-relative pointers, off-map) double-deref
+     'node_build_vtable_blr_guard_2',    #  through the whole chain: the step's own node
+     'lockmgr_head_load_guard',          #  virtual probe pair, the node registrar's slot
+     'lockmgr_key_load_guard',           #  double-derefs and null-slot flag stores, and the
+     'lockmgr_pop_load_guard',           #  256-entry list-clear loop on the null registry
+     'pushmgr_head_load_guard',          #  singleton. The 42 guards answer 0 / skip-store
+     'pushmgr_key_load_guard',           #  exactly when the base is off-map (the #31 idiom)
+     'pushmgr_slot_load_guard',          #  and re-execute byte-identical with a built chain;
+     'pushmgr_slot_store_guard',         #  the dispatch skips answer the builder's virtual
+     'step_node_load_guard',             #  slots' 0 into code that ignores or is itself
+     'step_node_vtable_guard',           #  guarded, so a real Switch never reaches them)
+     'step_node_vcall_guard',
+     'node_init_slot_load_guard',
+     'node_init_log_load_guard',
+     'node_init_gadget_load_guard',
+     'node_init_alloc_load_guard',
+     'node_init_alloc_load_guard_2',
+     'node_init_alloc_load_guard_3',
+     'node_init_registry_load_guard',
+     'node_init_flag_store_guard',
+     'node_init_flag_store_guard_2',
+     'node_init_flag_store_guard_3',
+     'node_init_flag_store_guard_4',
+     'node_init_slot_load_guard_2',
+     'list_clear_buf_load_guard',
+     'list_clear_vtable_load_guard',
+     'list_clear_vtable_load_guard_2',
+     'list_clear_vcall_guard',
+     'list_clear_head_load_guard',
+     'list_clear_vtable_load_guard_3',
+     'list_clear_vtable_load_guard_4',
+     'list_clear_vcall_guard_2',
+     'list_clear_head_load_guard_2',
+     'list_clear_name_load_guard',
+     'list_clear_count_load_guard',
+     'list_clear_name_store_guard'),
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1492,6 +1598,48 @@ KNOWN = {
         'log_tail_slot_load_guard': 0x700127ecf0,
         'log_tail_slot_load_guard_2': 0x700127ed50,
         'log_tail_slot_load_guard_3': 0x700127ee08,
+        'node_build_obj_load_guard': 0x7000003f68,
+        'node_build_vtable_load_guard': 0x7000003f78,
+        'node_build_factory_load_guard': 0x7000003f90,
+        'node_build_obj_load_guard_2': 0x7000004354,
+        'node_build_vtable_load_guard_2': 0x7000004360,
+        'node_build_factory_load_guard_2': 0x700000445c,
+        'node_build_vtable_blr_guard': 0x700000448c,
+        'node_build_vtable_blr_guard_2': 0x7000004908,
+        'lockmgr_head_load_guard': 0x7000ea3c5c,
+        'lockmgr_key_load_guard': 0x7000ea3c60,
+        'lockmgr_pop_load_guard': 0x7000ea3c7c,
+        'pushmgr_head_load_guard': 0x7000ea3ca0,
+        'pushmgr_key_load_guard': 0x7000ea3ca4,
+        'pushmgr_slot_load_guard': 0x7000ea3cac,
+        'pushmgr_slot_store_guard': 0x7000ea3cb0,
+        'step_node_load_guard': 0x700127ee90,
+        'step_node_vtable_guard': 0x700127ee98,
+        'step_node_vcall_guard': 0x700127ee9c,
+        'node_init_slot_load_guard': 0x700127f00c,
+        'node_init_log_load_guard': 0x700127f05c,
+        'node_init_gadget_load_guard': 0x700127f088,
+        'node_init_alloc_load_guard': 0x700127f09c,
+        'node_init_alloc_load_guard_2': 0x700127f0a0,
+        'node_init_alloc_load_guard_3': 0x700127f0a4,
+        'node_init_registry_load_guard': 0x700127f0e0,
+        'node_init_flag_store_guard': 0x700127f104,
+        'node_init_flag_store_guard_2': 0x700127f108,
+        'node_init_flag_store_guard_3': 0x700127f118,
+        'node_init_flag_store_guard_4': 0x700127f11c,
+        'node_init_slot_load_guard_2': 0x700127f124,
+        'list_clear_buf_load_guard': 0x700127f198,
+        'list_clear_vtable_load_guard': 0x700127f190,
+        'list_clear_vtable_load_guard_2': 0x700127f194,
+        'list_clear_vcall_guard': 0x700127f19c,
+        'list_clear_head_load_guard': 0x700127f1a0,
+        'list_clear_vtable_load_guard_3': 0x700127f1ac,
+        'list_clear_vtable_load_guard_4': 0x700127f1b8,
+        'list_clear_vcall_guard_2': 0x700127f1bc,
+        'list_clear_head_load_guard_2': 0x700127f1c0,
+        'list_clear_name_load_guard': 0x700127f1c8,
+        'list_clear_count_load_guard': 0x700127f1e0,
+        'list_clear_name_store_guard': 0x700127f200,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

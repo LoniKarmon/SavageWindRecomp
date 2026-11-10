@@ -2153,6 +2153,30 @@ def _query_object_vcall_guard(gen, a):
 # neutral 0 for an off-map x0 (key OR singleton), and with a real Switch's built subsystem the
 # keys and singletons are on-map -- every guarded line re-executes its spill/store
 # byte-identical. (The _query_object_vcall_guard text above closes the run75 family.)
+# The registry-node ctor f_7000008168 and its step caller need three extra guard shapes: an
+# STP pair whose two sources differ (incl. the 32-bit width at 0x7000008538), and a pre-index
+# store skip that still performs the base write-back (the str xzr, [x25, #8]! at 0x7000008348;
+# the literal-8 base it leaves behind feeds the guarded stores at 0x7000008d7c/0x70000086f4).
+def _offmap_pair_store_guard(w, cond, ea, src1, src2, note, st='ST64', gap=8):
+    def guard(gen, a):
+        assert _word(gen, a) == w, hex(_word(gen, a))  # STP pair with two different sources
+        return ('{' + f' if ({cond} - 0x7000000000ull >= 0x320000000ull);'
+                f' else {{ uint64_t ea = {ea}; {st}(ea, {src1}); {st}(ea + {gap}, {src2});'
+                f' }} }}'
+                f'  /* {a:#x}: {note} */')
+    return guard
+
+
+def _offmap_pre_store_guard(w, cond, add, note):
+    def guard(gen, a):
+        assert _word(gen, a) == w, hex(_word(gen, a))  # str xzr, [cond, #add]! (pre-index)
+        return ('{' + f' if ({cond} - 0x7000000000ull >= 0x320000000ull)'
+                f' {cond} = (uint64_t)({cond} + {add});'
+                f' else {{ uint64_t ea = {cond} + {add}; ST64(ea, 0ull); {cond} = ea; }} }}'
+                f'  /* {a:#x}: {note} */')
+    return guard
+
+
 def _tail_guard(spill, w_entry, off, w_pin, note, cond='x0'):
     def guard(gen, a):
         assert _word(gen, a) == w_entry, hex(_word(gen, a))
@@ -2675,6 +2699,195 @@ PATCHES = {
         ' x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10]; x12 = c->x[12];',
         'push-region vtable virtual on the double-deref of the answered-0 object, reachable'
         ' once the thunk answers a real object: 6dd8 reloads x0 from the frame (6dd4)'),
+    # The registry-node singleton constructor f_7000008168 and its step caller f_7000003304
+    # (run80's fault family -- game_sites.py OPTIONAL_GROUPS' rn_* group carries the run80
+    # forensics): the answered-0 singleton flows through the ctor key block (run80's fault insn
+    # str xzr, [x25, #8]! at 8348), the empty-count path and the join tail, so every load/store
+    # below rides c->x[21] = 0 or a literal base it leaves behind (the pre-index write-back hands
+    # 8 to the guarded 8d7c store); the alloc node's copy/lock block then rides literal 0x38 and
+    # answered-0 mutex handles into the import thunks, and the caller's three post-call vtable-
+    # pair probes dispatch on answered-0 or unrelocated-addend slots (the #35/#39 form). Every
+    # guarded else re-runs the original instruction verbatim and on a real Switch (built
+    # registry, relocated slots) those bases are all on-map, so the guards pass through there.
+    # The entry calls whose args ride frames or on-map slots (f_70015a09e0/09d0/fef0 and the
+    # alloc wrapper) stay unguarded -- proven null-safe through runtime-resolved import slots in
+    # run80 -- and the string-compare loop after this chain is the predicted family #44.
+    'rn_08348':                        _offmap_pre_store_guard(
+        0xf8008f3f, 'c->x[25]', '0x8ull',
+        'run80 fault insn, pre-index lock-owner clear on the answered-0 node; the skip still'
+        ' performs the base write-back, leaving the literal 8 that feeds the guarded 8d7c store'
+        ' (8348)'),
+    'rn_0834c':                        _offmap_stp_guard(
+        0xa9017ebf, 'c->x[21]', 'c->x[21] + 16', '0ull',
+        'key-block null list-link pair on the answered-0 singleton (834c)'),
+    'rn_08354':                        _offmap_store_guard(
+        0xf90002a8, 'c->x[21]', 'c->x[21] + 0x0ull', 'ST64', 'x8',
+        'key-block vtable store through the answered-0 singleton (8354)'),
+    'rn_084f0':                        _offmap_store_guard(
+        0xf90042bf, 'c->x[21]', 'c->x[21] + 0x80ull', 'ST64', '0ull',
+        'join-tail back-link clear on the answered-0 singleton (84f0)'),
+    'rn_084f4':                        _offmap_store_guard(
+        0xf90002a8, 'c->x[21]', 'c->x[21] + 0x0ull', 'ST64', 'x8',
+        'join-tail vtable 0x7001d04b00 store on the answered-0 singleton (84f4)'),
+    'rn_0850c':                        _offmap_pair_store_guard(
+        0xa902aaa8, 'c->x[21]', 'c->x[21] + 40', 'x8', 'x10',
+        'join-tail string-pair store through the answered-0 singleton (850c)'),
+    'rn_0851c':                        _offmap_store_guard(
+        0xf90012a9, 'c->x[21]', 'c->x[21] + 0x20ull', 'ST64', 'x9',
+        'join-tail slot+0x10 pointer on the answered-0 singleton (851c)'),
+    'rn_08524':                        _offmap_load_guard(
+        0xf9402c08, 'x0', 'x8', 'x0 + 0x58ull', 'LD64',
+        'lock-object word on the frame-slot value that answers null off-map on this path (8524)'),
+    'rn_08528':                        _offmap_store_guard(
+        0xf90066a9, 'c->x[21]', 'c->x[21] + 0xc8ull', 'ST64', 'x9',
+        'join-tail capacity 0x7fffffff on the answered-0 singleton (8528)'),
+    'rn_08530':                        _offmap_store_guard(
+        0xb900c2a9, 'c->x[21]', 'c->x[21] + 0xc0ull', 'ST32', '(uint32_t)x9',
+        'join-tail flag 1 on the answered-0 singleton (8530)'),
+    'rn_08534':                        _offmap_stp_guard(
+        0xa9097ebf, 'c->x[21]', 'c->x[21] + 144', '0ull',
+        'join-tail null pair 0x90 on the answered-0 singleton (8534)'),
+    'rn_08538':                        _offmap_pair_store_guard(
+        0x291a26aa, 'c->x[21]', 'c->x[21] + 208', '(uint32_t)x10', '(uint32_t)x9',
+        'join-tail count pair 0xd0, 32-bit STP width, on the answered-0 singleton (8538)',
+        st='ST32', gap=4),
+    'rn_0853c':                        _offmap_store_guard(
+        0xb9008aa8, 'c->x[21]', 'c->x[21] + 0x88ull', 'ST32', '(uint32_t)x8',
+        'join-tail bucket shift on the answered-0 singleton (853c)'),
+    'rn_08540':                        _offmap_stp_guard(
+        0xa90a7ebf, 'c->x[21]', 'c->x[21] + 160', '0ull',
+        'join-tail null pair 0xa0 on the answered-0 singleton (8540)'),
+    'rn_08544':                        _offmap_stp_guard(
+        0xa90b7ebf, 'c->x[21]', 'c->x[21] + 176', '0ull',
+        'join-tail null pair 0xb0 on the answered-0 singleton (8544)'),
+    'rn_08550':                        _offmap_pair_store_guard(
+        0xa90e7ea0, 'c->x[21]', 'c->x[21] + 224', 'x0', '0ull',
+        'join-tail bucket-head link pair through the answered-0 singleton (8550)'),
+    'rn_08554':                        _offmap_store_guard(
+        0xf9007abf, 'c->x[21]', 'c->x[21] + 0xf0ull', 'ST64', '0ull',
+        'join-tail tail clear on the answered-0 singleton (8554)'),
+    'rn_08558':                        _offmap_store_guard(
+        0xb900daa8, 'c->x[21]', 'c->x[21] + 0xd8ull', 'ST32', '(uint32_t)x8',
+        'join-tail shift count on the answered-0 singleton (8558)'),
+    'rn_08560':                        _offmap_store_guard(
+        0xb900faa0, 'c->x[21]', 'c->x[21] + 0xf8ull', 'ST32', '(uint32_t)x0',
+        'f_70015a09d0 thunk answer on the answered-0 singleton (8560)'),
+    'rn_08568':                        _offmap_store_guard(
+        0xf90052b5, 'c->x[21]', 'c->x[21] + 0xa0ull', 'ST64', 'c->x[21]',
+        'join-tail self-link on the answered-0 singleton (8568)'),
+    'rn_08570':                        _offmap_load_guard(
+        0xf9400100, 'x8', 'x0', 'x8 + 0x0ull', 'LD64',
+        'registry-head load on the unrelocated static slot [0x7001d69430]; the null answer'
+        ' takes the alloc path (8570)'),
+    'rn_086f4':                        _offmap_store_guard(
+        0xf90042b4, 'c->x[21]', 'c->x[21] + 0x80ull', 'ST64', 'c->x[20]',
+        'node-copy back-link through the answered-0 singleton, src = real alloc node (86f4)'),
+    'rn_086fc':                        _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0910(Cpu *c); c->x[30] = 0x7000008700ull; c->x[0] = x0;'
+        ' c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[11] = x11; c->x[23] = x23;'
+        ' f_70015a0910(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10];'
+        ' x11 = c->x[11];',
+        'node-copy memcpy would store 0x20 bytes at dst = x21 + 0x38 = literal 0x38; the answer'
+        ' is dead, 8700 recomputes x0 (the patched bl bypasses the generator target scan, so the'
+        ' cross-chunk declaration rides in the else block) (86fc)'),
+    'rn_08710':                        _offmap_store_guard(
+        0xf9007aa8, 'c->x[21]', 'c->x[21] + 0xf0ull', 'ST64', 'x8',
+        'mutex-init answer store through the answered-0 singleton (8710)'),
+    'rn_08718':                        _offmap_store_guard(
+        0xb9008aa8, 'c->x[21]', 'c->x[21] + 0x88ull', 'ST32', '(uint32_t)x8',
+        'mutex wait-count store on the answered-0 singleton (8718)'),
+    'rn_0871c':                        _offmap_load_guard(
+        0xb940dab4, 'c->x[21]', 'c->x[20]', 'c->x[21] + 0xd8ull', 'LD32',
+        'wait-count reload on the answered-0 singleton (871c)'),
+    'rn_08720':                        _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0a80(Cpu *c); c->x[30] = 0x7000008724ull; c->x[8] = x8;'
+        ' f_70015a0a80(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10];'
+        ' x11 = c->x[11];',
+        'the mutex thunk f_70015a0a80 rides the f_70015a09e0 return, null on this path; 8724'
+        ' recomputes x0 (8720)'),
+    'rn_08724':                        _offmap_load_guard(
+        0xf94072a0, 'c->x[21]', 'x0', 'c->x[21] + 0xe0ull', 'LD64',
+        'mutex address load on the answered-0 singleton (8724)'),
+    'rn_08730':                        _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0a90(Cpu *c); c->x[30] = 0x7000008734ull; c->x[0] = x0;'
+        ' f_70015a0a90(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10];'
+        ' x11 = c->x[11];',
+        'the wait thunk f_70015a0a90 rides the guarded 8724 answer; its result dies into the'
+        ' vtable stores, which re-materialize x8 (8730)'),
+    'rn_0873c':                        _offmap_store_guard(
+        0xf90002a8, 'c->x[21]', 'c->x[21] + 0x0ull', 'ST64', 'x8',
+        'second vtable 0x7001d04be0 store on the answered-0 singleton (873c)'),
+    'rn_08748':                        _offmap_store_guard(
+        0xf9001aa8, 'c->x[21]', 'c->x[21] + 0x30ull', 'ST64', 'x8',
+        'name-link slot store on the answered-0 singleton (8748)'),
+    'rn_08750':                        _offmap_load_guard(
+        0xb9408900, 'x8', 'x0', 'x8 + 0x88ull', 'LD32',
+        'caller-object count on the sp+0x38 slot holding the answered-0 arg (8750)'),
+    'rn_08754':                        _offmap_store_guard(
+        0xf9004115, 'x8', 'x8 + 0x80ull', 'ST64', 'c->x[21]',
+        'caller-object back-link through the same literal-0 base (8754)'),
+    'rn_08758':                        _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0a60(Cpu *c); c->x[30] = 0x700000875cull; c->x[0] = x0;'
+        ' c->x[8] = x8; f_70015a0a60(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9];'
+        ' x10 = c->x[10]; x11 = c->x[11];',
+        'the mutex thunk f_70015a0a60 rides the guarded 8750 answer; 8778 recomputes x0 from'
+        ' the static slot (8758)'),
+    'rn_08778':                        _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0a60(Cpu *c); c->x[30] = 0x700000877cull; c->x[0] = x0;'
+        ' c->x[8] = x8; f_70015a0a60(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9];'
+        ' x10 = c->x[10]; x11 = c->x[11];',
+        'the second f_70015a0a60 rides the never-initialized slot [0x7001e348b0] word, off-map'
+        ' here; the epilogue returns x21 = 0 and ignores the answer (8778)'),
+    'rn_08d7c':                        _offmap_store_guard(
+        0xf900033f, 'c->x[25]', 'c->x[25] + 0x0ull', 'ST64', '0ull',
+        'lock-owner clear through the literal 8 written back by 8348 -- run80 fault path'
+        ' second half (8d7c)'),
+    # The caller side: the answered-0 / addend vtable-pair probe chains after the ctor, the
+    # null list-entry from 36d4, and the f_7000003f10 builder's answered-0 result. The three
+    # blr skips answer c->x[0] = 0 into code that recomputes x0 or already holds literal 0 in
+    # the local (the guards make it so on this path), and their dispatch_lookup backstop lets
+    # an unrelocated addend slot skip too.
+    'rn_0339c':                        _offmap_load_guard(
+        0xf9400288, 'x20', 'x8', 'x20 + 0x0ull', 'LD64',
+        'step-object vtable load feeding the NE-path probe chain (339c)'),
+    'rn_033a8':                        _offmap_load_guard(
+        0xf9401508, 'x8', 'x8', 'x8 + 0x28ull', 'LD64',
+        'method slot on the guarded answer or unrelocated addend (33a8)'),
+    'rn_036cc':                        _offmap_blr_guard(
+        'c->pc = x8; x30 = 0x70000036d0ull; c->x[0] = x0; c->x[8] = x8;'
+        ' c->x[30] = x30; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x13 = c->x[13];'
+        ' x30 = c->x[30];',
+        'NE-path virtual probe on the answered-0 / addend vtable pair; 33bc recomputes x0 from'
+        ' x19, so the answer is dead (36cc)'),
+    'rn_033d4':                        _offmap_load_guard(
+        0xf9400268, 'x19', 'x8', 'x19 + 0x0ull', 'LD64',
+        'node vtable on x19 = 0, the null list-entry from 36d4 (33d4)'),
+    'rn_033dc':                        _offmap_load_guard(
+        0xf9404108, 'x8', 'x8', 'x8 + 0x80ull', 'LD64',
+        'method slot on the guarded answer (33dc)'),
+    'rn_036e4':                        _offmap_blr_guard(
+        'c->pc = x8; x30 = 0x70000036e8ull; c->x[0] = x0; c->x[8] = x8; c->x[19] = x19;'
+        ' c->x[30] = x30; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x13 = c->x[13];'
+        ' x30 = c->x[30];',
+        'NE-path virtual probe on the answered-0 vtable pair; local x0 is already the literal 0'
+        ' spilled from x19, so x20 = x0 at 36e8 carries the skip answer into 3450 (36e4)'),
+    'rn_0347c':                        _offmap_load_guard(
+        0xf9400008, 'x0', 'x8', 'x0 + 0x0ull', 'LD64',
+        'builder-result vtable on the answered-0 f_7000003f10 return (347c)'),
+    'rn_03484':                        _offmap_load_guard(
+        0xf9404108, 'x8', 'x8', 'x8 + 0x80ull', 'LD64',
+        'builder-result method slot on the guarded answer (3484)'),
+    'rn_03728':                        _offmap_blr_guard(
+        'c->pc = x8; x30 = 0x700000372cull; c->x[0] = x0; c->x[8] = x8; c->x[19] = x19;'
+        ' c->x[30] = x30; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x13 = c->x[13];'
+        ' x30 = c->x[30];',
+        'NE-path virtual probe after the builder answered 0; local x0 = literal 0 carries into'
+        ' the 34f4 continuation, predicted family #44 (3728)'),
 }
 
 

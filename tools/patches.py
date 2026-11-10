@@ -2218,12 +2218,31 @@ def _offmap_store_guard(w, cond, ea, st, src, note):
     return guard
 
 
-def _offmap_blr_guard(disp, note, cond='x8', answer='c->x[0] = 0ull'):
+def _offmap_blr_guard(disp, note, cond='x8', answer='c->x[0] = 0ull', w=0xd63f0100):
     def guard(gen, a):
-        assert _word(gen, a) == 0xd63f0100, hex(_word(gen, a))  # blr x8 (the virtual probe)
+        assert _word(gen, a) == w, hex(_word(gen, a))  # blr x8 / blr x9 (the virtual probe)
         return ('{ extern GuestFn dispatch_lookup(uint64_t);'
                 f' if ({cond} - 0x7000000000ull >= 0x320000000ull || !dispatch_lookup({cond}))'
                 f' {answer};'
+                f' else {{ {disp} }} }}'
+                f'  /* {a:#x}: {note} */')
+    return guard
+
+
+def _offmap_stp_guard(w, cond, ea, src, note):
+    def guard(gen, a):
+        assert _word(gen, a) == w, hex(_word(gen, a))
+        return ('{' + f' if ({cond} - 0x7000000000ull >= 0x320000000ull);'
+                f' else {{ uint64_t ea = {ea}; ST64(ea, {src}); ST64(ea + 8, {src});'
+                f' }} }}'
+                f'  /* {a:#x}: {note} */')
+    return guard
+
+
+def _offmap_call_skip_guard(cond, disp, note, answer='c->x[0] = 0ull'):
+    def guard(gen, a):
+        assert _word(gen, a) & 0xFC000000 == 0x94000000, hex(_word(gen, a))  # bl #<target>
+        return ('{' + f' if ({cond} - 0x7000000000ull >= 0x320000000ull) {answer};'
                 f' else {{ {disp} }} }}'
                 f'  /* {a:#x}: {note} */')
     return guard
@@ -2596,6 +2615,66 @@ PATCHES = {
                                                            'c->x[20] + (uint64_t)(int64_t)(int32_t)x26',
                                                            'ST8', '0u',
                                                           'clear loop terminator store through the answered-0 entry field'),
+    # The step's node constructor f_700000690c (run79's fault family; see the ctrl_* group
+    # comment in game_sites.py OPTIONAL_GROUPS): the caller passes the builder's answered-0
+    # node and the lock thunk answers 0 again through the #41 manager-slot guards, so the
+    # constructor's null-arg else-init and the paths it feeds deref and store through literal
+    # bases / guest VAs 0x8..0x88. Every guarded else re-runs the original instruction
+    # verbatim, and on a real Switch (built registry, relocated slots) those bases are all
+    # on-map, so the guards are pass-through there; the dead-on-Switch else paths are exactly
+    # the ones whose literal-base stores would fault on a real Switch too.
+    'ctrl_arg_load_guard':             _offmap_load_guard(0xf9400109, 'x8', 'x9', 'x8 + 0x0ull', 'LD64',
+                                                          'constructor first word of the answered-0 caller object (6944)'),
+    'ctrl_vtable_load_guard':          _offmap_load_guard(0xf9401929, 'x9', 'x9', 'x9 + 0x30ull', 'LD64',
+                                                          'constructor vtable+0x30 slot on the answered-0 first word (694c)'),
+    'ctrl_list_head_store_guard':      _offmap_store_guard(0xf9000109, 'x8', 'x8 + 0x0ull', 'ST64', 'x9',
+                                                          'chain-head 0x7001d04bc0 store through the sp+0x30 spill holding raw 8 (6b14)'),
+    'ctrl_node_flag_store_guard':      _offmap_store_guard(0xb9003a7f, 'c->x[19]', 'c->x[19] + 0x38ull', 'ST32', '0u',
+                                                          'node count init on the answered-0 manager slot, x19 = 0 (6b30)'),
+    'ctrl_node_link_stp_guard':        _offmap_stp_guard(0xa902a669, 'c->x[19]', 'c->x[19] + 0x28ull', 'x9',
+                                                         'node list-link self-pointer pair init on x19 = 0 (6b34)'),
+    'ctrl_node_vptr_store_guard':      _offmap_store_guard(0xf9000268, 'c->x[19]', 'c->x[19] + 0x0ull', 'ST64', 'x8',
+                                                          'node vtable 0x7001d04d60 store on x19 = 0 (6b3c)'),
+    'ctrl_node_push_call_guard':       _offmap_call_skip_guard(
+        'c->x[19]',
+        'c->x[30] = 0x7000006b44ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10;'
+        ' c->x[12] = x12; c->sp = sp_; f_700000151c(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9];'
+        ' x10 = c->x[10]; x12 = c->x[12];',
+        'registrar push f_700000151c would write through x0 = x19+0x40 = 0x40; 6b44 recomputes'
+        ' x0, so the answer is dead (6b40)'),
+    'ctrl_node_tail_store_guard':      _offmap_store_guard(0xf900427f, 'c->x[19]', 'c->x[19] + 0x80ull', 'ST64', '0ull',
+                                                          'node tail link clear on x19 = 0 (6b4c)'),
+    'ctrl_hle_mutex_call_guard':       _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0ab0(Cpu *c); c->x[30] = 0x7000006b54ull; c->x[0] = x0;'
+        ' f_70015a0ab0(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10];'
+        ' x12 = c->x[12];',
+        'osMutexInit would write through x0 = x19+0x88 = 0x88; the constructor returns x19'
+        ' (6b58-6b6c), so the answer is dead (6b50); the patched bl bypasses the generator'
+        ' target scan, so the cross-chunk declaration rides in the else block'),
+    'ctrl_ctor_resp_store_guard':      _offmap_store_guard(0xf9000100, 'x8', 'x8 + 0x0ull', 'ST64', 'x0',
+                                                          'lock-thunk 0 answer through the [x29+0x18] frame slot holding literal 0x10 (6ba4)'),
+    'ctrl_init_link_store_guard':      _offmap_store_guard(0xf900012a, 'x9', 'x9 + 0x0ull', 'ST64', 'x10',
+                                                          'else-init list link through literal 8, the run79 fault insn str x10, [x9] (6bf4)'),
+    'ctrl_init_zero_store_guard':      _offmap_store_guard(0xf900013f, 'x9', 'x9 + 0x0ull', 'ST64', '0ull',
+                                                          'else-init null store through literal 0x10 (6c04)'),
+    'ctrl_init_zero_store_guard_2':    _offmap_store_guard(0xf900011f, 'x8', 'x8 + 0x0ull', 'ST64', '0ull',
+                                                          'else-init null store through literal 0x20 (6c08)'),
+    'ctrl_init_zero_store_guard_3':    _offmap_store_guard(0xf900011f, 'x8', 'x8 + 0x0ull', 'ST64', '0ull',
+                                                          'else-init null store through literal 0x18 (6c10)'),
+    'ctrl_probe_vcall_guard':          _offmap_blr_guard(
+        'c->pc = x9; c->x[30] = 0x7000006c68ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9;'
+        ' c->x[10] = x10; c->sp = sp_; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9];'
+        ' x10 = c->x[10]; x12 = c->x[12];',
+        'constructor probe virtual on the answered-0 vtable slot or an unrelocated addend:'
+        ' 6c68-6c70 reload x0 from the frame slot and 6aac ignores the answer (6c64)',
+        cond='x9', w=0xd63f0120),
+    'ctrl_ctor_vf_vcall_guard':        _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000006dd8ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9;'
+        ' c->x[10] = x10; c->x[12] = x12; c->sp = sp_; rt_dispatch(c); x0 = c->x[0];'
+        ' x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10]; x12 = c->x[12];',
+        'push-region vtable virtual on the double-deref of the answered-0 object, reachable'
+        ' once the thunk answers a real object: 6dd8 reloads x0 from the frame (6dd4)'),
 }
 
 

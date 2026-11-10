@@ -1035,6 +1035,22 @@ SITES = [
     Site('list_clear_name_load_guard',      'code', '3868692a 3400000a/ff00001f 91000508 eb19011f 54000001/ff00001f 2a1f03e8 b9401349 aa1403e0', 0),
     Site('list_clear_count_load_guard',     'code', 'b9401349 aa1403e0 aa1503e1 5100052a 6b09011f 1a8ab11a 93407f42 94000000/fc000000', 0),
     Site('list_clear_name_store_guard',     'code', '383aca9f 910006d6 f10402df 54000001/ff00001f a9444ff4 a94357f6 a9425ff8 a94167fa', 0),
+    Site('ctrl_arg_load_guard',            'code', 'f9400109 9000000b/9f00001f f9401929 f940016b/ffc003ff eb0b013f 54000001/ff00001f f9400150 7941b109 37000009/fff8001f aa1f03eb b9409109 531d7122 37f80009/fff8001f 7100205f 54000008/ff00001f f940750a', 0),  # -> 0x7000006944
+    Site('ctrl_vtable_load_guard',         'code', 'f9401929 f9447d6b eb0b013f 54000001/ff00001f f9400150 7941b109 37000009/fff8001f aa1f03eb b9409109 531d7122 37f80009/fff8001f 7100205f 54000008/ff00001f f940750a', 0),  # -> 0x700000694c
+    Site('ctrl_list_head_store_guard',     'code', 'f9000109 9000000a/9f00001f f9000148/ffc003ff 90000008/9f00001f 91000108/ffc003ff 9100a269 91010260 b9003a7f', 0),  # -> 0x7000006b14
+    Site('ctrl_node_flag_store_guard',     'code', 'b9003a7f a902a669 91004108 f9000268 94000000/fc000000 91022260 aa1f03e1 f900427f', 0),  # -> 0x7000006b30
+    Site('ctrl_node_link_stp_guard',       'code', 'a902a669 91004108 f9000268 94000000/fc000000 91022260 aa1f03e1 f900427f 94000000/fc000000', 0),  # -> 0x7000006b34
+    Site('ctrl_node_vptr_store_guard',     'code', 'f9000268 94000000/fc000000 91022260 aa1f03e1 f900427f 94000000/fc000000 f9036a93 aa1303e0', 0),  # -> 0x7000006b3c
+    Site('ctrl_node_push_call_guard',      'code', '94000000/fc000000 91022260 aa1f03e1 f900427f 94000000/fc000000 f9036a93 aa1303e0 a9484ff4', 0),  # -> 0x7000006b40
+    Site('ctrl_node_tail_store_guard',     'code', 'f900427f 94000000/fc000000 f9036a93 aa1303e0 a9484ff4 f9403bf5 a9467bfd 910243ff', 0),  # -> 0x7000006b4c
+    Site('ctrl_hle_mutex_call_guard',      'code', '94000000/fc000000 f9036a93 aa1303e0 a9484ff4 f9403bf5 a9467bfd 910243ff d65f03c0', 0),  # -> 0x7000006b50
+    Site('ctrl_ctor_resp_store_guard',     'code', 'f9000100 f9401be8 b5000000/ff00001f 14000000/fc000000 aa0003f3 aa0903e0 94000000/fc000000 9000000a/9f00001f', 0),  # -> 0x7000006ba4
+    Site('ctrl_init_link_store_guard',     'code', 'f900012a 52800209 f9000fa8 52800408 f900013f f900011f 52800308 f900011f', 0),  # -> 0x7000006bf4
+    Site('ctrl_init_zero_store_guard',     'code', 'f900013f f900011f 52800308 f900011f 14000000/fc000000 f9001be8 9102e008 91026015', 0),  # -> 0x7000006c04
+    Site('ctrl_init_zero_store_guard_2',   'code', 'f900011f 52800308 f900011f 14000000/fc000000 f9001be8 9102e008 91026015 f9000fa0', 0),  # -> 0x7000006c08
+    Site('ctrl_init_zero_store_guard_3',   'code', 'f900011f 14000000/fc000000 f9001be8 9102e008 91026015 f9000fa0 aa0803e0 94000000/fc000000', 0),  # -> 0x7000006c10
+    Site('ctrl_probe_vcall_guard',         'code', 'd63f0120 aa0003f3 f9400fa0 14000000/fc000000 9102e109 f9000fa0 91026115 aa0903e0', 0),  # -> 0x7000006c64
+    Site('ctrl_ctor_vf_vcall_guard',       'code', 'd63f0100 f9400fa0 aa1f03f3 f9401beb 14000000/fc000000 cb0d014d 14000000/fc000000 f9000fa0', 0),  # -> 0x7000006dd4
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -1304,6 +1320,24 @@ OPTIONAL_GROUPS = [
      'list_clear_name_load_guard',
      'list_clear_count_load_guard',
      'list_clear_name_store_guard'),
+    ('ctrl_arg_load_guard',            # (run79's fault family, full-CFG sweep of the step's
+     'ctrl_vtable_load_guard',         #  node constructor f_700000690c: run78's answered-0
+     'ctrl_list_head_store_guard',     #  builder node reaches it as x0, its lock thunk answers
+     'ctrl_node_flag_store_guard',     #  0 again through the #41 manager-slot guards, and the
+     'ctrl_node_link_stp_guard',       #  null-arg else-init then stores list links / nulls
+     'ctrl_node_vptr_store_guard',     #  through literal bases 8, 0x10, 0x20, 0x18 -- run79's
+     'ctrl_node_push_call_guard',      #  fault insn is its str x10, [x9] at 6bf4 -- dead on a
+     'ctrl_node_tail_store_guard',     #  real Switch (literal-base stores would fault there
+     'ctrl_hle_mutex_call_guard',      #  too), the ctor answers the lock response through the
+     'ctrl_ctor_resp_store_guard',     #  frame slot holding literal 0x10, the registrar push
+     'ctrl_init_link_store_guard',     #  and osMutexInit would write through guest VAs
+     'ctrl_init_zero_store_guard',     #  0x40/0x88, the answered-0 chain head feeds an rtti-
+     'ctrl_init_zero_store_guard_2',   #  like store through the sp+0x30 spill's raw 8, and
+     'ctrl_init_zero_store_guard_3',   #  the two virtual probes dispatch on answered-0 /
+     'ctrl_probe_vcall_guard',         #  unrelocated addends vtable slots (the #35/#39 form
+     'ctrl_ctor_vf_vcall_guard'),      #  with the dispatch_lookup backstop); every guard
+                                       #  skips only off-map and re-runs byte-identical on a
+                                       #  built chain, so a real Switch never differs)
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1640,6 +1674,22 @@ KNOWN = {
         'list_clear_name_load_guard': 0x700127f1c8,
         'list_clear_count_load_guard': 0x700127f1e0,
         'list_clear_name_store_guard': 0x700127f200,
+        'ctrl_arg_load_guard': 0x7000006944,
+        'ctrl_vtable_load_guard': 0x700000694c,
+        'ctrl_list_head_store_guard': 0x7000006b14,
+        'ctrl_node_flag_store_guard': 0x7000006b30,
+        'ctrl_node_link_stp_guard': 0x7000006b34,
+        'ctrl_node_vptr_store_guard': 0x7000006b3c,
+        'ctrl_node_push_call_guard': 0x7000006b40,
+        'ctrl_node_tail_store_guard': 0x7000006b4c,
+        'ctrl_hle_mutex_call_guard': 0x7000006b50,
+        'ctrl_ctor_resp_store_guard': 0x7000006ba4,
+        'ctrl_init_link_store_guard': 0x7000006bf4,
+        'ctrl_init_zero_store_guard': 0x7000006c04,
+        'ctrl_init_zero_store_guard_2': 0x7000006c08,
+        'ctrl_init_zero_store_guard_3': 0x7000006c10,
+        'ctrl_probe_vcall_guard': 0x7000006c64,
+        'ctrl_ctor_vf_vcall_guard': 0x7000006dd4,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

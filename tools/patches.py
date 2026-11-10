@@ -2135,6 +2135,49 @@ def _query_object_vcall_guard(gen, a):
             ' the tail reloads x0 from [x23] and branches only on x21) */')
 
 
+# The framework step's debug-logging tail (game_sites.py log_tail_* guards, tools/patches.py):
+# run76 cleared the query-virtual family -- the step ran past its virtual probe into the
+# post-chain debug-logging tail (0x700127ece4..0x700127efd4) -- and died with signal 11
+# accessing 0x1: the dump's host pc f_7000007c20+130 pins the alloc thunk reading its name
+# argument INSIDE the resource-node getter f_70010860b4 (the step's bl at 0x700127ece0 passes
+# x0 = x20, the never-built param value's raw word 1, and the getter's cache-miss path allocs
+# a 0x430 node keyed on that name; the dump: x0 = 0x430, x1 = 1, guest frames 70010860f8
+# 700127ece4). The static sweep of the whole tail shows the same root cause everywhere: the
+# never-built registrar left every param/resource singleton slot null in .bss and every key a
+# raw word, so the tail's ~20 singleton getters alloc with a dirty key (the alloc thunk derefs
+# it) and its publishers store through the null singleton itself. Three loads inside the step
+# double-deref those slots (0x700127ecf0 / 0x700127ed50 / 0x700127ee08: [slot] is null, ldr x0,
+# [x8] faults) -- they answer x0 = 0 as the null singleton to the guarded callee right after.
+# Every one of the 20 call sites ignores the answer (each reloads x0 from [x21]/its own table
+# right after the bl, audited one by one), so the entry guards answer the resource family's
+# neutral 0 for an off-map x0 (key OR singleton), and with a real Switch's built subsystem the
+# keys and singletons are on-map -- every guarded line re-executes its spill/store
+# byte-identical. (The _query_object_vcall_guard text above closes the run75 family.)
+def _tail_guard(spill, w_entry, off, w_pin, note, cond='x0'):
+    def guard(gen, a):
+        assert _word(gen, a) == w_entry, hex(_word(gen, a))
+        assert _word(gen, a + off) == w_pin, hex(_word(gen, a + off))
+        return ('{' + f' if ({cond} - 0x7000000000ull >= 0x320000000ull)'
+                ' { c->x[0] = 0ull; return; }'
+                f' {spill} }}  /* {a:#x}: {note} */')
+    return guard
+
+
+def _tail_load_guard(off, w_pin, note):
+    def guard(gen, a):
+        assert _word(gen, a) == 0xf9400100, hex(_word(gen, a))  # ldr x0, [x8] (the slot)
+        assert _word(gen, a + off) == w_pin, hex(_word(gen, a + off))
+        return ('{ if (x8 - 0x7000000000ull >= 0x320000000ull) x0 = 0ull;'
+                ' else { uint64_t ea = x8 + 0x0ull; uint64_t v = LD64(ea);'
+                ' x0 = (uint64_t)(v); } }'
+                f'  /* {a:#x}: {note} */')
+    return guard
+
+
+_STP30 = '{ uint64_t ea = sp_ - 48; ST64(ea, c->x[29]); ST64(ea + 8, c->x[30]); sp_ = ea; }'
+_STP30X = '{ uint64_t ea = sp_ - 48; ST64(ea, c->x[29]); ST64(ea + 8, x30); sp_ = ea; }'
+
+
 PATCHES = {
     'lookat_update': _lookat_update,
     'pc_map_focus': _pc_map_focus(False),
@@ -2325,6 +2368,62 @@ PATCHES = {
     'entry_ready_flag_guard': _entry_ready_flag_guard,
     'query_object_vtable_guard': _query_object_vtable_guard,
     'query_object_vcall_guard': _query_object_vcall_guard,
+    # The framework step's debug-logging tail (see the _tail_guard comment above): 20 entry
+    # guards answering the resource family's neutral 0 for an off-map key/singleton x0, plus
+    # 3 in-step slot-double-deref load guards answering 0 for an off-map x8.
+    'log_tail_resource_getter_guard':  _tail_guard(_STP30,  0xa9bd7bfd, 0x14, 0xf941a6d3,
+                                                   'resource-node getter keyed on the raw word 1'),
+    'log_tail_node_publish_guard':     _tail_guard(_STP30X, 0xa9bd7bfd, 0x3c, 0xf901e695,
+                                                   'node publisher storing through its this-pointer'),
+    'log_tail_flag_accessor_guard':    _tail_guard(_STP30,  0xa9bd7bfd, 0x14, 0xf947fed3,
+                                                   'flag accessor on the never-built singleton'),
+    'log_tail_flag_accessor_guard_2':  _tail_guard(_STP30,  0xa9bd7bfd, 0x14, 0xf94006d3,
+                                                   'flag accessor 2 on the never-built singleton'),
+    'log_tail_flag_accessor_guard_3':  _tail_guard(_STP30,  0xa9bd7bfd, 0x14, 0xf9400ed3,
+                                                   'flag accessor 3 on the never-built singleton'),
+    'log_tail_value_getter_guard':     _tail_guard(_STP30,  0xa9bd7bfd, 0x14, 0xf942c6b3,
+                                                   'param-value getter keyed on the raw word 1'),
+    'log_tail_value_publish_guard':    _tail_guard('{ uint64_t ea = c->x[0] + 0x20ull; ST64(ea, c->x[1]); }',
+                                                   0xf9001001, 4, 0xd65f03c0,
+                                                   'param-value publisher storing through the null singleton',
+                                                   cond='c->x[0]'),
+    'log_tail_tag_getter_guard':       _tail_guard(_STP30,  0xa9bd7bfd, 0x14, 0xf942e6d3,
+                                                   'tag getter keyed on the raw word 1'),
+    'log_tail_name_getter_guard':      _tail_guard(_STP30,  0xa9bd7bfd, 0x14, 0xf9429ed3,
+                                                   'name getter keyed on the raw word 1'),
+    'log_tail_name_format_guard':      _tail_guard('sp_ = (uint64_t)(sp_ - 0x40ull);',
+                                                   0xd10103ff, 0x60, 0xf9002aa0,
+                                                   'name formatter storing through the never-built singleton'),
+    'log_tail_flag_node_getter_guard': _tail_guard(_STP30,  0xa9bd7bfd, 0x14, 0xf9432eb3,
+                                                   'flag-node getter keyed on the raw word 1'),
+    'log_tail_flag_format_guard':      _tail_guard('sp_ = (uint64_t)(sp_ - 0x50ull);',
+                                                   0xd10143ff, 0x20, 0xf9413108,
+                                                   'flag formatter derefing the never-built singleton'),
+    'log_tail_state_getter_guard':     _tail_guard(_STP30,  0xa9bd7bfd, 0x14, 0xf947beb3,
+                                                   'state getter keyed on the raw word 1'),
+    'log_tail_state_format_guard':     _tail_guard('sp_ = (uint64_t)(sp_ - 0x90ull);',
+                                                   0xd10243ff, 0x20, 0x52802b15,
+                                                   'state formatter on the never-built singleton'),
+    'log_tail_pool_getter_guard':      _tail_guard(_STP30,  0xa9bd7bfd, 0x14, 0xf945b2d3,
+                                                   'pool getter keyed on the raw word 1'),
+    'log_tail_pool_clear_guard':       _tail_guard('{ uint64_t ea = x0 + 0x28ull; ST32(ea, 0u); }',
+                                                   0xb900281f, 4, 0xb900781f,
+                                                   'pool clear storing through the null singleton'),
+    'log_tail_debug_getter_guard':     _tail_guard(_STP30,  0xa9bd7bfd, 0x14, 0xf94592d3,
+                                                   'debug getter keyed on the raw word 1'),
+    'log_tail_time_getter_guard':      _tail_guard(_STP30,  0xa9bd7bfd, 0x14, 0xf9426ab3,
+                                                   'time getter keyed on the raw word 1'),
+    'log_tail_ready_setter_guard':     _tail_guard('sp_ = (uint64_t)(sp_ - 0x20ull);',
+                                                   0xd10083ff, 0x14, 0x3900c008,
+                                                   'ready setter storing through the never-built singleton'),
+    'log_tail_manager_getter_guard':   _tail_guard(_STP30,  0xa9bd7bfd, 0x14, 0xf942bed3,
+                                                   'manager getter keyed on the raw word 1'),
+    'log_tail_slot_load_guard':        _tail_load_guard(8,  0xaa1503e0,
+                                                        'null param singleton slot then ldr x0, [x8] before node publish'),
+    'log_tail_slot_load_guard_2':      _tail_load_guard(8,  0xaa1503e0,
+                                                        'null param-value singleton slot then ldr x0, [x8] before value publish'),
+    'log_tail_slot_load_guard_3':      _tail_load_guard(4,  0xf9400268,
+                                                        'null flag singleton slot then ldr x0, [x8] before flag format'),
 }
 
 

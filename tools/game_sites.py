@@ -928,6 +928,49 @@ SITES = [
     # real Switch's registered object both re-execute untouched (on-map "vptr", on-map slot).
     Site('query_object_vtable_guard',   'code', 'f9401508 d63f0100 f10006bf 54000000/ff00001f f94002e0 aa1503e1 94000000/fc000000 90000000/9f00001f', 0),
     Site('query_object_vcall_guard',    'code', 'd63f0100 f10006bf 54000000/ff00001f f94002e0 aa1503e1 94000000/fc000000 90000000/9f00001f 91000000/ffc003ff', 0),
+    # The step tail's never-built logging subsystem (tools/patches.py log_tail_* guards):
+    # run76 cleared the query-virtual family -- the step ran past its virtual probe into the
+    # debug-logging tail of its post-chain block (0x700127ece4..0x700127efd4) -- and died with
+    # signal 11 accessing 0x1: the dump's host pc f_7000007c20+130 pins the alloc thunk reading
+    # its NAME argument inside the resource-node getter f_70010860b4 -- the step's bl at
+    # 0x700127ece0 passes x0 = x20, the never-built param value's raw word 1, and the getter's
+    # cache-miss path allocs a 0x430 node keyed on that name (the dump: x0 = 0x430, x1 = 1,
+    # guest frames 70010860f8 700127ece4). The static sweep of the whole tail shows the same
+    # root cause everywhere it goes: the never-built registrar left every param/resource
+    # singleton slot null in .bss and every key a raw cell, so its ~20 singleton getters alloc
+    # with a dirty name (thunk fault) and its publishers store through the null singleton
+    # (store fault), plus three double-deref loads INSIDE the step itself -- 0x700127ecf0,
+    # 0x700127ed50, 0x700127ee08 read [slot] (null) then ldr x0, [x8] straight off it (those
+    # answer the null singleton as x0 = 0 to the guarded callees right after). Every answer is
+    # ignored: all 20 call sites reload x0 from [x21]/their own table right after the bl
+    # (0x700127ece8 mov x1, x20 overwrites... and the ecf8/ed58/ee18-style reloads; audited
+    # one by one), and with a real Switch's built subsystem the keys and singletons are on-map
+    # so every guarded line re-executes its spill/store byte-identical. The entry guards answer
+    # the resource family's neutral 0 (tools/patches.py _tail_guard_entry), the three loads
+    # answer 0 with the off-map x8 idiom of the #39 pair.
+    Site('log_tail_resource_getter_guard',  'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd 90000016/9f00001f f941a6d3', 0),
+    Site('log_tail_node_publish_guard',     'code', 'a9bd7bfd f9000bf5 a9024ff4 910003fd aa0003f4 52800a00 52800102 aa0103f3', 0),
+    Site('log_tail_flag_accessor_guard',    'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd 90000016/9f00001f f947fed3', 0),
+    Site('log_tail_flag_accessor_guard_2',  'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd b0005e16 f94006d3 b5000293 aa0003f4 52800500', 0),
+    Site('log_tail_flag_accessor_guard_3',  'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd b0005e16 f9400ed3 b5000293 aa0003f4 52800500', 0),
+    Site('log_tail_value_getter_guard',     'code', 'a9bd7bfd f9000bf5 a9024ff4 910003fd 90000015/9f00001f f94002b3/ffc003ff b5000013/ff00001f aa0003f4 52801800 52800102 aa1403e1 94000000/fc000000 aa1403e1 52800062 aa0003f3 94000000/fc000000 92b01008', 0),
+    Site('log_tail_value_publish_guard',    'code', 'f9001001 d65f03c0 fc170fec 6d012beb', 0),
+    Site('log_tail_tag_getter_guard',       'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd 90000016/9f00001f f94002d3/ffc003ff b4000013/ff00001f aa1303e0 a9424ff4 a94157f6 a8c37bfd d65f03c0 aa0003f4 52804c00', 0),
+    Site('log_tail_name_getter_guard',      'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd 90000016/9f00001f f94002d3/ffc003ff b5000013/ff00001f aa0003f4 52801900', 0),
+    Site('log_tail_name_format_guard',      'code', 'd10103ff a9017bfd a90257f6 a9034ff4 910043fd 90000008/9f00001f aa0203f3 f9400108/ffc003ff aa0103f4 aa0003f5', 0),
+    Site('log_tail_flag_node_getter_guard', 'code', 'a9bd7bfd f9000bf5 a9024ff4 910003fd 90000015/9f00001f f94002b3/ffc003ff b4000013/ff00001f aa1303e0 a9424ff4 f9400bf5 a8c37bfd d65f03c0 aa0003f4 52803000', 0),
+    Site('log_tail_flag_format_guard',      'code', 'd10143ff a9017bfd a9025ff8 a90357f6 a9044ff4 910043fd 90000008/9f00001f aa0103f5 f9400108/ffc003ff aa0003f3 aa1f03f6', 0),
+    Site('log_tail_state_getter_guard',     'code', 'a9bd7bfd f9000bf5 a9024ff4 910003fd 90000015/9f00001f f94002b3/ffc003ff b4000013/ff00001f aa1303e0 a9424ff4 f9400bf5 a8c37bfd d65f03c0 aa0003f4 52802300', 0),
+    Site('log_tail_state_format_guard',     'code', 'd10243ff a9037bfd a9046ffc a90567fa a9065ff8 a90757f6 a9084ff4 9100c3fd 52802b15', 0),
+    Site('log_tail_pool_getter_guard',      'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd 90000016/9f00001f f94002d3/ffc003ff b4000013/ff00001f aa1303e0 a9424ff4 a94157f6 a8c37bfd d65f03c0 aa0003f4 5281c500', 0),
+    Site('log_tail_pool_clear_guard',       'code', 'b900281f b900781f b900c81f b901181f b901681f b901b81f b902081f b902581f', 0),
+    Site('log_tail_debug_getter_guard',     'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd 90000016/9f00001f f94002d3/ffc003ff b4000013/ff00001f aa1303e0 a9424ff4 a94157f6 a8c37bfd d65f03c0 aa0003f4 52811800', 0),
+    Site('log_tail_time_getter_guard',      'code', 'a9bd7bfd f9000bf5 a9024ff4 910003fd 90000015/9f00001f f94002b3/ffc003ff b5000013/ff00001f aa0003f4 52800d00 52800102 aa1403e1 94000000/fc000000 aa1403e1 52800062 aa0003f3 94000000/fc000000 90000008/9f00001f 91000108/ffc003ff f9000268 90000008/9f00001f 9100a260 f9000113/ffc003ff 52800028', 0),
+    Site('log_tail_ready_setter_guard',     'code', 'd10083ff a9017bfd 910043fd 52800028 d10013a1 3900c008 f9401400 381fc3a8', 0),
+    Site('log_tail_manager_getter_guard',   'code', 'a9bd7bfd a90157f6 a9024ff4 910003fd b00052f6 f942bed3 b5000293 aa0003f4 52800500', 0),
+    Site('log_tail_slot_load_guard',        'code', 'f9400100 94000000/fc000000 aa1503e0 94000000/fc000000 f9400668 b4000128 b0001df5', 0),
+    Site('log_tail_slot_load_guard_2',      'code', 'f9400100 94000000/fc000000 aa1503e0 94000000/fc000000 d0001cd5 912106b5 aa1503e0', 0),
+    Site('log_tail_slot_load_guard_3',      'code', 'f9400100 f9400268 f90007e8 94000000/fc000000 aa1403e0 94000000/fc000000 90001e54', 0),
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -1132,6 +1175,29 @@ OPTIONAL_GROUPS = [
                                         #  word -- the "vtable" slot load faults and the
                                         #  blr would dispatch to nothing -- the pair skips
                                         #  to the ignored 0 the ecb0 tail reloads over)
+    ('log_tail_resource_getter_guard',  # (run76's fault family, full-tail sweep: the step's
+     'log_tail_node_publish_guard',     #  post-chain debug-logging tail runs its whole chain
+     'log_tail_flag_accessor_guard',    #  on never-built param/resource singletons -- the
+     'log_tail_flag_accessor_guard_2',  #  getters alloc with the raw-word keys (the alloc
+     'log_tail_flag_accessor_guard_3',  #  thunk derefs the name: run76's crash accessing
+     'log_tail_value_getter_guard',     #  0x1) and the publishers store through the null
+     'log_tail_value_publish_guard',    #  singletons, so the 20 entry guards answer the
+     'log_tail_tag_getter_guard',       #  resource family's neutral 0 whenever the key /
+     'log_tail_name_getter_guard',      #  singleton x0 is off the guest map, and the 3
+     'log_tail_name_format_guard',      #  slot-double-deref loads inside the step itself
+     'log_tail_flag_node_getter_guard', #  (0x700127ecf0 / 0x700127ed50 / 0x700127ee08)
+     'log_tail_flag_format_guard',      #  answer 0 for the off-map x8 the never-built slot
+     'log_tail_state_getter_guard',     #  leaves; every answer is ignored (each caller
+     'log_tail_state_format_guard',     #  reloads x0 right after), so a real Switch's
+     'log_tail_pool_getter_guard',      #  built subsystem -- on-map keys, built singletons
+     'log_tail_pool_clear_guard',       #  -- re-executes every guarded line untouched)
+     'log_tail_debug_getter_guard',
+     'log_tail_time_getter_guard',
+     'log_tail_ready_setter_guard',
+     'log_tail_manager_getter_guard',
+     'log_tail_slot_load_guard',
+     'log_tail_slot_load_guard_2',
+     'log_tail_slot_load_guard_3'),
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1403,6 +1469,29 @@ KNOWN = {
         'entry_ready_flag_guard': 0x7001557a08,
         'query_object_vtable_guard': 0x700127eca0,
         'query_object_vcall_guard': 0x700127eca4,
+        'log_tail_resource_getter_guard': 0x70010860b4,
+        'log_tail_node_publish_guard': 0x70010896b8,
+        'log_tail_flag_accessor_guard': 0x7001284900,
+        'log_tail_flag_accessor_guard_2': 0x7001284ab4,
+        'log_tail_flag_accessor_guard_3': 0x7001284bb0,
+        'log_tail_value_getter_guard': 0x70013f91f8,
+        'log_tail_value_publish_guard': 0x70013f9294,
+        'log_tail_tag_getter_guard': 0x700120a594,
+        'log_tail_name_getter_guard': 0x7001208480,
+        'log_tail_name_format_guard': 0x7001208554,
+        'log_tail_flag_node_getter_guard': 0x7001178c1c,
+        'log_tail_flag_format_guard': 0x7001179044,
+        'log_tail_state_getter_guard': 0x700112a32c,
+        'log_tail_state_format_guard': 0x700112a444,
+        'log_tail_pool_getter_guard': 0x70010d48a4,
+        'log_tail_pool_clear_guard': 0x70010d5fe8,
+        'log_tail_debug_getter_guard': 0x70013ffb20,
+        'log_tail_time_getter_guard': 0x70013f6e4c,
+        'log_tail_ready_setter_guard': 0x70011fcbcc,
+        'log_tail_manager_getter_guard': 0x70013f90f8,
+        'log_tail_slot_load_guard': 0x700127ecf0,
+        'log_tail_slot_load_guard_2': 0x700127ed50,
+        'log_tail_slot_load_guard_3': 0x700127ee08,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

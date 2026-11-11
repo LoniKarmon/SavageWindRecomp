@@ -1097,6 +1097,34 @@ SITES = [
     Site('rn_03484',                   'code', 'f9404108 eb18011f 54000001/ff00001f 7941b268 37000008/fff8001f aa1f03e8 f940766d 9103826c', 0),  # -> 0x7000003484
     Site('rn_036e4',                   'code', 'd63f0100 aa0003f4 14000000/fc000000 9102e260 91026274 94000000/fc000000 aa1403e8 14000000/fc000000 f9400d2f eb0e01ff 54000003/ff00001f 14000000/fc000000 91008100 94000000/fc000000 14000000/fc000000 aa1303e0', 0),  # -> 0x70000036e4
     Site('rn_03728',                   'code', 'd63f0100 aa0003f4 14000000/fc000000 9102e260 91026274 94000000/fc000000 aa1403e8 14000000/fc000000 f9400d2f eb0e01ff 54000003/ff00001f 14000000/fc000000 91008100 94000000/fc000000 14000000/fc000000 d63f0100', 0),  # -> 0x7000003728
+    Site('mc_05340',                     'code', 'f940e693 b5000013/ff00001f 9000000a/9f00001f 9100014a/ffc003ff f9400149 b4000009/ff00001f aa0003e8 b4000000/ff00001f f9400109', 8),  # -> 0x7000005340
+    Site('mc_05348',                     'code', 'f940e693 b5000013/ff00001f 9000000a/9f00001f 9100014a/ffc003ff f9400149 b4000009/ff00001f aa0003e8 b4000000/ff00001f f9400109 9000000b/9f00001f f9401929', 10),  # -> 0x7000005348
+    Site('mc_054b4',                     'code', 'a9017e7f a9000268 b4000000/ff00001f 7941b008 37000008/fff8001f aa1f03e8 aa0003eb f8478d69', 0),  # -> 0x70000054b4
+    Site('mc_054b8',                     'code', 'a9000268 b4000000/ff00001f 7941b008 37000008/fff8001f aa1f03e8 aa0003eb f8478d69 b980156a', 0),  # -> 0x70000054b8
+    Site('mc_05504',                     'code', 'f9000268 90000008/9f00001f aa1303e0 f9000113/ffc003ff 94000000/fc000000 f900e693 aa1303e0 a9484ff4', 0),  # -> 0x7000005504
+    Site('mc_05514',                     'code', '94000000/fc000000 f900e693 aa1303e0 a9484ff4 f9403bf5 a9467bfd 910243ff d65f03c0', 0),  # -> 0x7000005514
+    Site('mc_05554',                     'code', 'f9000660 b5000000/ff00001f 14000000/fc000000 9102e008 91026015 f9000fa0 aa0803e0 94000000/fc000000 f9400fa0 aa1503e8 14000000/fc000000 91008100 94000000/fc000000 14000000/fc000000 aa0003f3 aa0903e0 94000000/fc000000 9000000a/9f00001f aa0003e8 f940014a/ffc003ff aa1303e0 14000000/fc000000 f9000fa0', 0),  # -> 0x7000005554
+    Site('mc_055c0',                     'code', 'd63f0120 aa1303ea aa0003f3 f9400fa0 14000000/fc000000 9102e109 f9000fa0 91026115 aa0903e0 f90013f0 aa0a03f3 f9001be8 94000000/fc000000 f94013f0 aa1503eb aa1303ea f9401be8 f9400fa0 14000000/fc000000 4b0203e2 3100053f', 0),  # -> 0x70000055c0
+    Site('mc_04dd4',                     'code', 'f945f693 b5000013/ff00001f 9000000a/9f00001f 9100014a/ffc003ff f9400149 b4000009/ff00001f aa0003e8 b4000000/ff00001f f9400109', 8),  # -> 0x7000004dd4
+    Site('mc_04ddc',                     'code', 'f945f693 b5000013/ff00001f 9000000a/9f00001f 9100014a/ffc003ff f9400149 b4000009/ff00001f aa0003e8 b4000000/ff00001f f9400109 9000000b/9f00001f f9401929', 10),  # -> 0x7000004ddc
+    Site('mc_04f48',                     'code', 'a9017e7f a9000268 b4000000/ff00001f 7941b008 37000008/fff8001f aa1f03e8 aa0003eb f8478d69', 0),  # -> 0x7000004f48
+    Site('mc_04f4c',                     'code', 'a9000268 b4000000/ff00001f 7941b008 37000008/fff8001f aa1f03e8 aa0003eb f8478d69 b980156a', 0),  # -> 0x7000004f4c
+    Site('mc_04f98',                     'code', 'f9000268 90000008/9f00001f aa1303e0 f9000113/ffc003ff 94000000/fc000000 f905f693 aa1303e0 a9484ff4', 0),  # -> 0x7000004f98
+    Site('mc_04fa8',                     'code', '94000000/fc000000 f905f693 aa1303e0 a9484ff4 f9403bf5 a9467bfd 910243ff d65f03c0', 0),  # -> 0x7000004fa8
+    Site('mc_04fec',                     'code', 'f9000660 b5000000/ff00001f 14000000/fc000000 9102e008 91026015 f9000fa0 aa0803e0 94000000/fc000000 f9400fa0 aa1503e8 14000000/fc000000 91008100 94000000/fc000000 14000000/fc000000 aa0003f3 aa0903e0 94000000/fc000000 9000000a/9f00001f aa0003e8 f940014a/ffc003ff aa1303e0 14000000/fc000000 52800b01', 0),  # -> 0x7000004fec
+    Site('mc_05058',                     'code', 'd63f0120 aa1303ea aa0003f3 f9400fa0 14000000/fc000000 9102e109 f9000fa0 91026115 aa0903e0 f90013f0 aa0a03f3 f9001be8 94000000/fc000000 f94013f0 aa1503eb aa1303ea f9401be8 f9400fa0 14000000/fc000000 4b0203e2 52800b01', 0),  # -> 0x7000005058
+    Site('mc_03548',                     'code', 'f9400288 aa1403e0 f9401508 eb15011f 54000001/ff00001f 94000000/fc000000 f100073f 54000000/ff00001f', 0),  # -> 0x7000003548
+    Site('mc_03550',                     'code', 'f9401508 eb15011f 54000001/ff00001f 94000000/fc000000 f100073f 54000000/ff00001f f94002c8 b9408900', 0),  # -> 0x7000003550
+    Site('mc_03578',                     'code', 'f9400268 f9404108 eb18011f 54000001/ff00001f 7941b268 37000008/fff8001f aa1f03f8 f940766c', 0),  # -> 0x7000003578
+    Site('mc_0357c',                     'code', 'f9404108 eb18011f 54000001/ff00001f 7941b268 37000008/fff8001f aa1f03f8 f940766c 9103826b', 0),  # -> 0x700000357c
+    Site('mc_03640',                     'code', 'f9400288 aa1403e0 f9401508 eb15011f 54000001/ff00001f 94000000/fc000000 f10006ff 54000000/ff00001f', 0),  # -> 0x7000003640
+    Site('mc_03648',                     'code', 'aa1403e0 f9401508 eb15011f 54000001/ff00001f 94000000/fc000000 f10006ff 54000000/ff00001f f94002c8 b9408900', 1),  # -> 0x7000003648
+    Site('mc_03670',                     'code', 'f9400268 aa1303e0 f9401508 eb15011f 54000001/ff00001f 94000000/fc000000 a9454ff4 f94013f9', 0),  # -> 0x7000003670
+    Site('mc_03678',                     'code', 'f9401508 eb15011f 54000001/ff00001f 94000000/fc000000 a9454ff4 f94013f9 a94457f6 a9435ff8', 0),  # -> 0x7000003678
+    Site('mc_03764',                     'code', 'd63f0100 14000000/fc000000 aa1303e0 52800101 d63f0100 aa0003f4 14000000/fc000000 9102e260', 0),  # -> 0x7000003764
+    Site('mc_03774',                     'code', 'd63f0100 aa0003f4 14000000/fc000000 9102e260 91026278 94000000/fc000000 14000000/fc000000 f9400d0e', 0),  # -> 0x7000003774
+    Site('mc_037ac',                     'code', 'd63f0100 14000000/fc000000 d63f0100 14000000/fc000000', 0),  # -> 0x70000037ac
+    Site('mc_037b4',                     'code', 'd63f0100 14000000/fc000000 d63f0100 14000000/fc000000', 2),  # -> 0x70000037b4
     Site('main_data', 'data', '', 0),
     Site('main_end', 'end', '', 0),
 ]
@@ -1432,6 +1460,34 @@ OPTIONAL_GROUPS = [
      'rn_03728'),                      #  every guard skips only off-map: a real
                                        #  Switch's built registry keeps these bases
                                        #  on-map or relocated, so they pass through)
+    ('mc_05340',                     #  (run81's fault family, the manager-singleton ctor twins
+     'mc_05348',                     #   f_7000005308/f_7000004d9c and their step caller
+     'mc_054b4',                     #   f_7000003304: run81 proved the rn_* fix -- the node ctor
+     'mc_054b8',                     #   answered 0 through the registry sweep -- and pinned the
+     'mc_05504',                     #   new fault at ldr x9, [x8] in f_7000005308 + 0xfe (host
+     'mc_05514',                     #   pc f_7000005308+fe exactly, guest lr 0x7000005598, the
+     'mc_05554',                     #   step frames 7000003548/7000c617f0/7002614f34): x8 = 0 is
+     'mc_055c0',                     #   the lock thunk f_7000ea3c44's answered-0 singleton base,
+     'mc_04dd4',                     #   so the whole manager vtable chain hangs off literal 0.
+     'mc_04ddc',                     #   Both byte-identical twins carry the same eight sites --
+     'mc_04f48',                     #   the two vtable loads, the answered-0 base's init and
+     'mc_04f4c',                     #   back-link stores (two off-map-skipped stp pairs and two
+     'mc_04f98',                     #   str, plus the [x19+8] store through the guarded thunk
+     'mc_04fa8',                     #   call), the sub-ctor bl skipped on the answered-0 object,
+     'mc_04fec',                     #   and the ctor-tail virtual probe with its dispatch_lookup
+     'mc_05058',                     #   backstop; the twins' STP windows are pattern-ambiguous
+     'mc_03548',                     #   between them, so their pins tell the pairs apart. The
+     'mc_03550',                     #   caller's twelve sites guard its two NE-probe chains: the
+     'mc_03578',                     #   post-ctor [[x20]]/[[x19]+0x80] load pairs feeding the
+     'mc_0357c',                     #   cmp against the never-relocated vtable slot, and the
+     'mc_03640',                     #   four virtual blr probes answered 0 into recomputing or
+     'mc_03648',                     #   already-zero code (the getLock [x0+0xb0] chains around
+     'mc_03670',                     #   them skip first-run on the cmp x23/x25 == 1 gates and
+     'mc_03678',                     #   need no guards). Every guard answers or skips only
+     'mc_03764',                     #   off-map: a real Switch's built manager keeps these
+     'mc_03774',                     #   bases on-map or relocated, so they pass through; the
+     'mc_037ac',                     #   answered-0 walk is idempotent, each ctor step re-stores 0
+     'mc_037b4'),                     #  into the init-once slots [x20+0x1c8] and [x20+0xbe8])
 ]
 OPTIONAL = {n for g in OPTIONAL_GROUPS for n in g}
 
@@ -1830,6 +1886,34 @@ KNOWN = {
         'rn_03484': 0x7000003484,
         'rn_036e4': 0x70000036e4,
         'rn_03728': 0x7000003728,
+        'mc_05340': 0x7000005340,
+        'mc_05348': 0x7000005348,
+        'mc_054b4': 0x70000054b4,
+        'mc_054b8': 0x70000054b8,
+        'mc_05504': 0x7000005504,
+        'mc_05514': 0x7000005514,
+        'mc_05554': 0x7000005554,
+        'mc_055c0': 0x70000055c0,
+        'mc_04dd4': 0x7000004dd4,
+        'mc_04ddc': 0x7000004ddc,
+        'mc_04f48': 0x7000004f48,
+        'mc_04f4c': 0x7000004f4c,
+        'mc_04f98': 0x7000004f98,
+        'mc_04fa8': 0x7000004fa8,
+        'mc_04fec': 0x7000004fec,
+        'mc_05058': 0x7000005058,
+        'mc_03548': 0x7000003548,
+        'mc_03550': 0x7000003550,
+        'mc_03578': 0x7000003578,
+        'mc_0357c': 0x700000357c,
+        'mc_03640': 0x7000003640,
+        'mc_03648': 0x7000003648,
+        'mc_03670': 0x7000003670,
+        'mc_03678': 0x7000003678,
+        'mc_03764': 0x7000003764,
+        'mc_03774': 0x7000003774,
+        'mc_037ac': 0x70000037ac,
+        'mc_037b4': 0x70000037b4,
         'main_data': 0x7001b7a000,
         'main_end': 0x7001e98000,
     },

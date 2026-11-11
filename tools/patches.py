@@ -2888,6 +2888,98 @@ PATCHES = {
         ' x30 = c->x[30];',
         'NE-path virtual probe after the builder answered 0; local x0 = literal 0 carries into'
         ' the 34f4 continuation, predicted family #44 (3728)'),
+    # The manager-singleton ctor twins and their step caller side (run81, family #44):
+    # every site guards one of the two byte-identical twins f_7000005308/f_7000004d9c or
+    # the step caller f_7000003304's probe chains around their calls; see game_sites.py
+    # mc_* for the full-CFG forensics. The twins' base is the lock thunk f_7000ea3c44's
+    # answered-0 singleton, so their vtable chain, init stores and virtual tail probe all
+    # hang off literal 0 exactly like run80's node singleton did.
+    'mc_05340':                         _offmap_load_guard(
+        0xf9400109, 'x8', 'x9', 'x8 + 0x0ull', 'LD64',
+        'manager vtable load through the answered-0 lock thunk base -- run81 fault (5340)'),
+    'mc_05348':                         _offmap_load_guard(
+        0xf9401929, 'x9', 'x9', 'x9 + 0x30ull', 'LD64',
+        'second hop of the answered-0 manager vtable chain (5348)'),
+    'mc_054b4':                         _offmap_stp_guard(
+        0xa9017e7f, 'c->x[19]', 'c->x[19] + 16', '0ull',
+        'link-slot zero pair stores on the answered-0 manager (54b4)'),
+    'mc_054b8':                         _offmap_pair_store_guard(
+        0xa9000268, 'c->x[19]', 'c->x[19] + 0', 'x8', 'x0',
+        'vtable and arg pair stores on the answered-0 manager (54b8)'),
+    'mc_05504':                         _offmap_store_guard(
+        0xf9000268, 'c->x[19]', 'c->x[19] + 0x0ull', 'ST64', 'x8',
+        'second vtable store on the answered-0 manager (5504)'),
+    'mc_05514':                         _offmap_call_skip_guard(
+        'c->x[19]',
+        'extern void f_7000005874(Cpu *c); c->x[30] = 0x7000005518ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[12] = x12; c->sp = sp_; f_7000005874(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10]; x12 = c->x[12];',
+        'sub-ctor f_7000005874 skipped on the off-map answered-0 manager; its dead answer lands in the equally guarded 5554 back-link store (5514)'),
+    'mc_05554':                         _offmap_store_guard(
+        0xf9000660, 'c->x[19]', 'c->x[19] + 0x8ull', 'ST64', 'x0',
+        'back-link store through the guarded lock thunk call (5554)'),
+    'mc_055c0':                         _offmap_blr_guard(
+        'c->pc = x9; c->x[30] = 0x70000055c4ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->sp = sp_; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10]; x12 = c->x[12];',
+        'ctor-tail virtual probe on the answered-0 vtable chain; its answer becomes the loop state x19 = 0, which re-runs the guarded init tail byte-identically (55c0)', cond='x9', w=0xd63f0120),
+    'mc_04dd4':                         _offmap_load_guard(
+        0xf9400109, 'x8', 'x9', 'x8 + 0x0ull', 'LD64',
+        'twin manager vtable load through the answered-0 lock thunk base (4dd4)'),
+    'mc_04ddc':                         _offmap_load_guard(
+        0xf9401929, 'x9', 'x9', 'x9 + 0x30ull', 'LD64',
+        'twin second hop of the answered-0 manager vtable chain (4ddc)'),
+    'mc_04f48':                         _offmap_stp_guard(
+        0xa9017e7f, 'c->x[19]', 'c->x[19] + 16', '0ull',
+        'twin link-slot zero pair stores on the answered-0 manager (4f48)'),
+    'mc_04f4c':                         _offmap_pair_store_guard(
+        0xa9000268, 'c->x[19]', 'c->x[19] + 0', 'x8', 'x0',
+        'twin vtable and arg pair stores on the answered-0 manager (4f4c)'),
+    'mc_04f98':                         _offmap_store_guard(
+        0xf9000268, 'c->x[19]', 'c->x[19] + 0x0ull', 'ST64', 'x8',
+        'twin second vtable store on the answered-0 manager (4f98)'),
+    'mc_04fa8':                         _offmap_call_skip_guard(
+        'c->x[19]',
+        'extern void f_7000005d80(Cpu *c); c->x[30] = 0x7000004facull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[12] = x12; c->sp = sp_; f_7000005d80(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10]; x12 = c->x[12];',
+        'twin sub-ctor f_7000005d80 skipped on the off-map answered-0 manager; its dead answer lands in the equally guarded 4fec back-link store (4fa8)'),
+    'mc_04fec':                         _offmap_store_guard(
+        0xf9000660, 'c->x[19]', 'c->x[19] + 0x8ull', 'ST64', 'x0',
+        'twin back-link store through the guarded lock thunk call (4fec)'),
+    'mc_05058':                         _offmap_blr_guard(
+        'c->pc = x9; c->x[30] = 0x700000505cull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->sp = sp_; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10]; x12 = c->x[12];',
+        'twin ctor-tail virtual probe on the answered-0 vtable chain; its answer becomes the loop state x19 = 0, which re-runs the guarded init tail byte-identically (5058)', cond='x9', w=0xd63f0120),
+    'mc_03548':                         _offmap_load_guard(
+        0xf9400288, 'x20', 'x8', 'x20 + 0x0ull', 'LD64',
+        'step-object vtable load feeding the post-ctor NE probe (3548)'),
+    'mc_03550':                         _offmap_load_guard(
+        0xf9401508, 'x8', 'x8', 'x8 + 0x28ull', 'LD64',
+        'method slot on the guarded answer or unrelocated addend (3550)'),
+    'mc_03578':                         _offmap_load_guard(
+        0xf9400268, 'x19', 'x8', 'x19 + 0x0ull', 'LD64',
+        'second base vtable load off the answered-0 manager (3578)'),
+    'mc_0357c':                         _offmap_load_guard(
+        0xf9404108, 'x8', 'x8', 'x8 + 0x80ull', 'LD64',
+        'method slot [vt+0x80] on the guarded answer (357c)'),
+    'mc_03764':                         _offmap_blr_guard(
+        'c->pc = x8; x30 = 0x7000003768ull; c->x[0] = x0; c->x[8] = x8; c->x[30] = x30; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x13 = c->x[13]; x30 = c->x[30];',
+        'NE-path virtual probe on the answered-0 / addend vtable pair; L_3560 re-checks x25, so the answer is dead (3764)'),
+    'mc_03774':                         _offmap_blr_guard(
+        'c->pc = x8; x30 = 0x7000003778ull; c->x[0] = x0; c->x[8] = x8; c->x[30] = x30; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x13 = c->x[13]; x30 = c->x[30];',
+        'second NE-path virtual probe with w1 = 8; x20 = the zero answer feeds the equally guarded f_7000003f10 builder chain (3774)'),
+    'mc_03640':                         _offmap_load_guard(
+        0xf9400288, 'x20', 'x8', 'x20 + 0x0ull', 'LD64',
+        'twin step-object vtable load feeding the post-ctor NE probe (3640)'),
+    'mc_03648':                         _offmap_load_guard(
+        0xf9401508, 'x8', 'x8', 'x8 + 0x28ull', 'LD64',
+        'twin method slot on the guarded answer or unrelocated addend (3648)'),
+    'mc_03670':                         _offmap_load_guard(
+        0xf9400268, 'x19', 'x8', 'x19 + 0x0ull', 'LD64',
+        'twin second base vtable load off the answered-0 manager (3670)'),
+    'mc_03678':                         _offmap_load_guard(
+        0xf9401508, 'x8', 'x8', 'x8 + 0x28ull', 'LD64',
+        'twin method slot [vt+0x28] on the guarded answer (3678)'),
+    'mc_037ac':                         _offmap_blr_guard(
+        'c->pc = x8; x30 = 0x70000037b0ull; c->x[0] = x0; c->x[8] = x8; c->x[30] = x30; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x13 = c->x[13]; x30 = c->x[30];',
+        'NE-path virtual probe on the twin answered-0 / addend vtable pair; L_3658 re-checks x23, so the answer is dead (37ac)'),
+    'mc_037b4':                         _offmap_blr_guard(
+        'c->pc = x8; x30 = 0x70000037b8ull; c->x[0] = x0; c->x[8] = x8; c->x[30] = x30; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x13 = c->x[13]; x30 = c->x[30];',
+        'second twin NE-path virtual probe answered 0 into the sp-based step epilogue (37b4)'),
 }
 
 

@@ -2167,12 +2167,23 @@ def _offmap_pair_store_guard(w, cond, ea, src1, src2, note, st='ST64', gap=8):
     return guard
 
 
-def _offmap_pre_store_guard(w, cond, add, note):
+def _offmap_pre_store_guard(w, cond, add, note, st='ST64', zero='0ull'):
     def guard(gen, a):
         assert _word(gen, a) == w, hex(_word(gen, a))  # str xzr, [cond, #add]! (pre-index)
         return ('{' + f' if ({cond} - 0x7000000000ull >= 0x320000000ull)'
                 f' {cond} = (uint64_t)({cond} + {add});'
-                f' else {{ uint64_t ea = {cond} + {add}; ST64(ea, 0ull); {cond} = ea; }} }}'
+                f' else {{ uint64_t ea = {cond} + {add}; {st}(ea, {zero}); {cond} = ea; }} }}'
+                f'  /* {a:#x}: {note} */')
+    return guard
+
+
+def _offmap_pre_load_guard(w, cond, add, dst, note):
+    def guard(gen, a):
+        assert _word(gen, a) == w, hex(_word(gen, a))  # ldr dst, [cond, #add]! (pre-index)
+        return ('{' + f' if ({cond} - 0x7000000000ull >= 0x320000000ull)'
+                f' {{ {cond} = (uint64_t)({cond} + {add}); {dst} = 0ull; }}'
+                f' else {{ uint64_t ea = {cond} + {add}; uint64_t v = LD64(ea); {cond} = ea;'
+                f' {dst} = (uint64_t)(v); }} }}'
                 f'  /* {a:#x}: {note} */')
     return guard
 
@@ -2980,6 +2991,416 @@ PATCHES = {
     'mc_037b4':                         _offmap_blr_guard(
         'c->pc = x8; x30 = 0x70000037b8ull; c->x[0] = x0; c->x[8] = x8; c->x[30] = x30; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x13 = c->x[13]; x30 = c->x[30];',
         'second twin NE-path virtual probe answered 0 into the sp-based step epilogue (37b4)'),
+    'bt_0a784':                          _offmap_load_guard(
+        0xf9400109, 'x8', 'x9', 'x8 + 0x0ull', 'LD64',
+        'registry entry-chain insurance load via x8 skipped off-map on the answered-0 walk (a784)'),
+    'bt_0a78c':                          _offmap_load_guard(
+        0xf9401929, 'x9', 'x9', 'x9 + 0x30ull', 'LD64',
+        'registry entry-chain insurance load via x9 skipped off-map on the answered-0 walk (a78c)'),
+    'bt_0a790':                          _offmap_load_guard(
+        0xf9447d6b, 'c->x[11]', 'c->x[11]', 'c->x[11] + 0x8f8ull', 'LD64',
+        'registry entry-chain insurance load via c->x[11] skipped off-map on the answered-0 walk (a790)'),
+    'bt_0a79c':                          _offmap_load_guard(
+        0xf9400151, 'x10', 'c->x[17]', 'x10 + 0x0ull', 'LD64',
+        'registry entry-chain insurance load via x10 skipped off-map on the answered-0 walk (a79c)'),
+    'bt_0a7a0':                          _offmap_load_guard(
+        0x7941b109, 'x8', 'x9', 'x8 + 0xd8ull', 'LD16',
+        'registry entry-chain insurance load via x8 skipped off-map on the answered-0 walk (a7a0)'),
+    'bt_0a7ac':                          _offmap_load_guard(
+        0xb9409109, 'x8', 'x9', 'x8 + 0x90ull', 'LD32',
+        'registry entry-chain insurance load via x8 skipped off-map on the answered-0 walk (a7ac)'),
+    'bt_0a7c0':                          _offmap_load_guard(
+        0xf940750c, 'x8', 'c->x[12]', 'x8 + 0xe8ull', 'LD64',
+        'registry entry-chain insurance load via x8 skipped off-map on the answered-0 walk (a7c0)'),
+    'bt_0a7d0':                          _offmap_load_guard(
+        0xb980f509, 'x8', 'x9', 'x8 + 0xf4ull', '(uint64_t)(int64_t)(int32_t)LD32',
+        'registry entry-chain insurance load via x8 skipped off-map on the answered-0 walk (a7d0)'),
+    'bt_0a7d8':                          _offmap_load_guard(
+        0x39437110, 'x8', 'c->x[16]', 'x8 + 0xdcull', 'LD8',
+        'registry entry-chain insurance load via x8 skipped off-map on the answered-0 walk (a7d8)'),
+    'bt_0a7e8':                          _offmap_load_guard(
+        0xf9400d90, 'c->x[12]', 'c->x[16]', 'c->x[12] + 0x18ull', 'LD64',
+        'registry entry-chain insurance load via c->x[12] skipped off-map on the answered-0 walk (a7e8)'),
+    'bt_0a7f8':                          _offmap_load_guard(
+        0x79402597, 'c->x[12]', 'c->x[23]', 'c->x[12] + 0x12ull', 'LD16',
+        'registry entry-chain insurance load via c->x[12] skipped off-map on the answered-0 walk (a7f8)'),
+    'bt_0a7fc':                          _offmap_store_guard(
+        0xf9000d89, 'c->x[12]', 'c->x[12] + 0x18ull', 'ST64', 'x9',
+        'registry entry-chain insurance store via c->x[12] skipped off-map on the answered-0 walk (a7fc)'),
+    'bt_0a800':                          _offmap_load_guard(
+        0xb980f511, 'x8', 'c->x[17]', 'x8 + 0xf4ull', '(uint64_t)(int64_t)(int32_t)LD32',
+        'registry entry-chain insurance load via x8 skipped off-map on the answered-0 walk (a800)'),
+    'bt_0a808':                          _offmap_load_guard(
+        0xf940052e, 'x9', 'c->x[14]', 'x9 + 0x8ull', 'LD64',
+        'registry entry-chain insurance load via x9 skipped off-map on the answered-0 walk (a808)'),
+    'bt_0a818':                          _offmap_load_guard(
+        0xf9400131, 'x9', 'c->x[17]', 'x9 + 0x0ull', 'LD64',
+        'registry entry-chain insurance load via x9 skipped off-map on the answered-0 walk (a818)'),
+    'bt_0a820':                          _offmap_store_guard(
+        0xf900062e, 'c->x[17]', 'c->x[17] + 0x8ull', 'ST64', 'c->x[14]',
+        'registry entry-chain insurance store via c->x[17] skipped off-map on the answered-0 walk (a820)'),
+    'bt_0a824':                          _offmap_load_guard(
+        0xf940052e, 'x9', 'c->x[14]', 'x9 + 0x8ull', 'LD64',
+        'registry entry-chain insurance load via x9 skipped off-map on the answered-0 walk (a824)'),
+    'bt_0a82c':                          _offmap_load_guard(
+        0xf9400131, 'x9', 'c->x[17]', 'x9 + 0x0ull', 'LD64',
+        'registry entry-chain insurance load via x9 skipped off-map on the answered-0 walk (a82c)'),
+    'bt_0a830':                          _offmap_store_guard(
+        0xf90001d1, 'c->x[14]', 'c->x[14] + 0x0ull', 'ST64', 'c->x[17]',
+        'registry entry-chain insurance store via c->x[14] skipped off-map on the answered-0 walk (a830)'),
+    'bt_0a834':                          _offmap_pair_store_guard(
+        0xa9007d3f, 'x9', 'x9 + 0', '0ull', '0ull',
+        'registry entry-chain insurance pair store via x9 skipped off-map on the answered-0 walk (a834)'),
+    'bt_0a83c':                          _offmap_load_guard(
+        0xb940f10e, 'x8', 'c->x[14]', 'x8 + 0xf0ull', 'LD32',
+        'registry entry-chain insurance load via x8 skipped off-map on the answered-0 walk (a83c)'),
+    'bt_0a840':                          _offmap_load_guard(
+        0xb9409111, 'x8', 'c->x[17]', 'x8 + 0x90ull', 'LD32',
+        'registry entry-chain insurance load via x8 skipped off-map on the answered-0 walk (a840)'),
+    'bt_0a84c':                          _offmap_store_guard(
+        0xb900f10e, 'x8', 'x8 + 0xf0ull', 'ST32', '(uint32_t)c->x[14]',
+        'registry entry-chain insurance store via x8 skipped off-map on the answered-0 walk (a84c)'),
+    'bt_0a850':                          _offmap_load_guard(
+        0xb9810d0e, 'x8', 'c->x[14]', 'x8 + 0x10cull', '(uint64_t)(int64_t)(int32_t)LD32',
+        'registry entry-chain insurance load via x8 skipped off-map on the answered-0 walk (a850)'),
+    'bt_0a85c':                          _offmap_load_guard(
+        0xf940012e, 'x9', 'c->x[14]', 'x9 + 0x0ull', 'LD64',
+        'registry entry-chain insurance load via x9 skipped off-map on the answered-0 walk (a85c)'),
+    'bt_0a860':                          _offmap_store_guard(
+        0xf9000121, 'x9', 'x9 + 0x0ull', 'ST64', 'c->x[1]',
+        'registry entry-chain insurance store via x9 skipped off-map on the answered-0 walk (a860)'),
+    'bt_0a864':                          _offmap_pair_store_guard(
+        0xa900242e, 'c->x[1]', 'c->x[1] + 0', 'c->x[14]', 'x9',
+        'registry entry-chain insurance pair store via c->x[1] skipped off-map on the answered-0 walk (a864)'),
+    'bt_0a86c':                          _offmap_store_guard(
+        0xf90005c1, 'c->x[14]', 'c->x[14] + 0x8ull', 'ST64', 'c->x[1]',
+        'registry entry-chain insurance store via c->x[14] skipped off-map on the answered-0 walk (a86c)'),
+    'bt_0a870':                          _offmap_load_guard(
+        0xb9410909, 'x8', 'x9', 'x8 + 0x108ull', 'LD32',
+        'registry entry-chain insurance load via x8 skipped off-map on the answered-0 walk (a870)'),
+    'bt_0a878':                          _offmap_store_guard(
+        0xb9010909, 'x8', 'x8 + 0x108ull', 'ST32', '(uint32_t)x9',
+        'registry entry-chain insurance store via x8 skipped off-map on the answered-0 walk (a878)'),
+    'bt_0a890':                          _offmap_store_guard(
+        0xb90871bf, 'c->x[13]', 'c->x[13] + 0x870ull', 'ST32', '0u',
+        'registry entry-chain insurance store via c->x[13] skipped off-map on the answered-0 walk (a890)'),
+    'bt_0a898':                          _offmap_store_guard(
+        0xf90435bf, 'c->x[13]', 'c->x[13] + 0x868ull', 'ST64', '0ull',
+        'registry entry-chain insurance store via c->x[13] skipped off-map on the answered-0 walk (a898)'),
+    'bt_0a8a0':                          _offmap_store_guard(
+        0xf90431bf, 'c->x[13]', 'c->x[13] + 0x860ull', 'ST64', '0ull',
+        'registry entry-chain insurance store via c->x[13] skipped off-map on the answered-0 walk (a8a0)'),
+    'bt_0a8a4':                          _offmap_store_guard(
+        0xf9043dae, 'c->x[13]', 'c->x[13] + 0x878ull', 'ST64', 'c->x[14]',
+        'registry entry-chain insurance store via c->x[13] skipped off-map on the answered-0 walk (a8a4)'),
+    'bt_0a8a8':                          _offmap_store_guard(
+        0x7910e1b0, 'c->x[13]', 'c->x[13] + 0x870ull', 'ST16', '(uint32_t)c->x[16]',
+        'registry entry-chain insurance store via c->x[13] skipped off-map on the answered-0 walk (a8a8)'),
+    'bt_0a8ac':                          _offmap_load_guard(
+        0xb980f50d, 'x8', 'c->x[13]', 'x8 + 0xf4ull', '(uint64_t)(int64_t)(int32_t)LD32',
+        'registry entry-chain insurance load via x8 skipped off-map on the answered-0 walk (a8ac)'),
+    'bt_0a8b8':                          _offmap_load_guard(
+        0xf94001ed, 'c->x[15]', 'c->x[13]', 'c->x[15] + 0x0ull', 'LD64',
+        'registry entry-chain insurance load via c->x[15] skipped off-map on the answered-0 walk (a8b8)'),
+    'bt_0a8bc':                          _offmap_store_guard(
+        0xf90001e9, 'c->x[15]', 'c->x[15] + 0x0ull', 'ST64', 'x9',
+        'registry entry-chain insurance store via c->x[15] skipped off-map on the answered-0 walk (a8bc)'),
+    'bt_0a8c0':                          _offmap_pair_store_guard(
+        0xa9003d2d, 'x9', 'x9 + 0', 'c->x[13]', 'c->x[15]',
+        'registry entry-chain insurance pair store via x9 skipped off-map on the answered-0 walk (a8c0)'),
+    'bt_0a8c8':                          _offmap_store_guard(
+        0xf90005a9, 'c->x[13]', 'c->x[13] + 0x8ull', 'ST64', 'x9',
+        'registry entry-chain insurance store via c->x[13] skipped off-map on the answered-0 walk (a8c8)'),
+    'bt_0a8cc':                          _offmap_load_guard(
+        0xb940f109, 'x8', 'x9', 'x8 + 0xf0ull', 'LD32',
+        'registry entry-chain insurance load via x8 skipped off-map on the answered-0 walk (a8cc)'),
+    'bt_0a8d4':                          _offmap_store_guard(
+        0xb900f109, 'x8', 'x8 + 0xf0ull', 'ST32', '(uint32_t)x9',
+        'registry entry-chain insurance store via x8 skipped off-map on the answered-0 walk (a8d4)'),
+    'bt_0a8d8':                          _offmap_load_guard(
+        0x7941b508, 'x8', 'x8', 'x8 + 0xdaull', 'LD16',
+        'registry entry-chain insurance load via x8 skipped off-map on the answered-0 walk (a8d8)'),
+    'bt_0a8dc':                          _offmap_store_guard(
+        0x79002188, 'c->x[12]', 'c->x[12] + 0x10ull', 'ST16', '(uint32_t)x8',
+        'registry entry-chain insurance store via c->x[12] skipped off-map on the answered-0 walk (a8dc)'),
+    'bt_0a8e0':                          _offmap_load_guard(
+        0x79402588, 'c->x[12]', 'x8', 'c->x[12] + 0x12ull', 'LD16',
+        'registry entry-chain insurance load via c->x[12] skipped off-map on the answered-0 walk (a8e0)'),
+    'bt_0a8f8':                          _offmap_store_guard(
+        0xf9035660, 'x19', 'x19 + 0x6a8ull', 'ST64', 'x0',
+        'registry entry-chain insurance store via x19 skipped off-map on the answered-0 walk (a8f8)'),
+    'bt_0a8fc':                          _offmap_store_guard(
+        0xf9035a7f, 'x19', 'x19 + 0x6b0ull', 'ST64', '0ull',
+        'registry entry-chain insurance store via x19 skipped off-map on the answered-0 walk (a8fc)'),
+    'bt_0a904':                          _offmap_store_guard(
+        0xf9035e7f, 'x19', 'x19 + 0x6b8ull', 'ST64', '0ull',
+        'registry entry-chain insurance store via x19 skipped off-map on the answered-0 walk (a904)'),
+    'bt_0a908':                          _offmap_store_guard(
+        0xf9035268, 'x19', 'x19 + 0x6a0ull', 'ST64', 'x8',
+        'registry entry-chain insurance store via x19 skipped off-map on the answered-0 walk (a908)'),
+    'bt_0a914':                          _offmap_load_guard(
+        0x7941b009, 'x0', 'x9', 'x0 + 0xd8ull', 'LD16',
+        'registry entry-chain insurance load via x0 skipped off-map on the answered-0 walk (a914)'),
+    'bt_0a924':                          _offmap_pre_load_guard(
+        0xf8478d69, 'c->x[11]', '120', 'x9',
+        'registry entry-chain insurance pre-index load via c->x[11] skipped off-map on the answered-0 walk (a924)'),
+    'bt_0a928':                          _offmap_load_guard(
+        0xb980156a, 'c->x[11]', 'x10', 'c->x[11] + 0x14ull', '(uint64_t)(int64_t)(int32_t)LD32',
+        'registry entry-chain insurance load via c->x[11] skipped off-map on the answered-0 walk (a928)'),
+    'bt_0a930':                          _offmap_store_guard(
+        0xf900016a, 'c->x[11]', 'c->x[11] + 0x0ull', 'ST64', 'x10',
+        'registry entry-chain insurance store via c->x[11] skipped off-map on the answered-0 walk (a930)'),
+    'bt_0a934':                          _offmap_pair_store_guard(
+        0xa9002d49, 'x10', 'x10 + 0', 'x9', 'c->x[11]',
+        'registry entry-chain insurance pair store via x10 skipped off-map on the answered-0 walk (a934)'),
+    'bt_0a93c':                          _offmap_store_guard(
+        0xf900052a, 'x9', 'x9 + 0x8ull', 'ST64', 'x10',
+        'registry entry-chain insurance store via x9 skipped off-map on the answered-0 walk (a93c)'),
+    'bt_0a940':                          _offmap_load_guard(
+        0xb9408809, 'x0', 'x9', 'x0 + 0x88ull', 'LD32',
+        'registry entry-chain insurance load via x0 skipped off-map on the answered-0 walk (a940)'),
+    'bt_0a948':                          _offmap_store_guard(
+        0xb9008809, 'x0', 'x0 + 0x88ull', 'ST32', '(uint32_t)x9',
+        'registry entry-chain insurance store via x0 skipped off-map on the answered-0 walk (a948)'),
+    'bt_0a958':                          _offmap_store_guard(
+        0xf9000109, 'x8', 'x8 + 0x0ull', 'ST64', 'x9',
+        'registry init-tail store via x8 skipped off-map on the answered-0 walk (a958)'),
+    'bt_0a964':                          _offmap_store_guard(
+        0xf9064128, 'x9', 'x9 + 0xc80ull', 'ST64', 'x8',
+        'registry init-tail store via x9 skipped off-map on the answered-0 walk (a964)'),
+    'bt_0a970':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0330(Cpu *c); c->x[30] = 0x700000a974ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[19] = x19; c->sp = sp_; f_70015a0330(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10];',
+        'array-zeroing thunk f_70015a0330 skipped on the raw x0 = x19 + 0x28 of the answered-0 singleton; its dead spill lands in the equally guarded tail (a970)'),
+    'bt_0a978':                          _offmap_store_guard(
+        0x3906427f, 'x19', 'x19 + 0x190ull', 'ST8', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (a978)'),
+    'bt_0a980':                          _offmap_pre_store_guard(
+        0x38014d1f, 'x8', '20',
+        'registry init-tail pre-index store via x8 skipped off-map on the answered-0 walk (a980)', 'ST8', '0u'),
+    'bt_0a984':                          _offmap_load_guard(
+        0xf9438d29, 'x9', 'x9', 'x9 + 0x718ull', 'LD64',
+        'registry init-tail load via x9 skipped off-map on the answered-0 walk (a984)'),
+    'bt_0a98c':                          _offmap_store_guard(
+        0x390aae7f, 'x19', 'x19 + 0x2abull', 'ST8', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (a98c)'),
+    'bt_0a990':                          _offmap_store_guard(
+        0xb901aa75, 'x19', 'x19 + 0x1a8ull', 'ST32', '(uint32_t)c->x[21]',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (a990)'),
+    'bt_0a9a8':                          _offmap_store_guard(
+        0xf9000269, 'x19', 'x19 + 0x0ull', 'ST64', 'x9',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (a9a8)'),
+    'bt_0a9b4':                          _offmap_load_guard(
+        0xf947d929, 'x9', 'x9', 'x9 + 0xfb0ull', 'LD64',
+        'registry init-tail load via x9 skipped off-map on the answered-0 walk (a9b4)'),
+    'bt_0a9b8':                          _offmap_pair_store_guard(
+        0xa9187e6a, 'x19', 'x19 + 384', 'x10', '0ull',
+        'registry init-tail pair store via x19 skipped off-map on the answered-0 walk (a9b8)'),
+    'bt_0a9bc':                          _offmap_store_guard(
+        0xb902ca75, 'x19', 'x19 + 0x2c8ull', 'ST32', '(uint32_t)c->x[21]',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (a9bc)'),
+    'bt_0a9c0':                          _offmap_store_guard(
+        0x390f2e7f, 'x19', 'x19 + 0x3cbull', 'ST8', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (a9c0)'),
+    'bt_0a9c8':                          _offmap_store_guard(
+        0x390f427f, 'x19', 'x19 + 0x3d0ull', 'ST8', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (a9c8)'),
+    'bt_0a9d0':                          _offmap_store_guard(
+        0xf9015e76, 'x19', 'x19 + 0x2b8ull', 'ST64', 'c->x[22]',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (a9d0)'),
+    'bt_0a9d4':                          _offmap_pair_store_guard(
+        0xa919a276, 'x19', 'x19 + 408', 'c->x[22]', 'x8',
+        'registry init-tail pair store via x19 skipped off-map on the answered-0 walk (a9d4)'),
+    'bt_0a9dc':                          _offmap_store_guard(
+        0xf9015a68, 'x19', 'x19 + 0x2b0ull', 'ST64', 'x8',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (a9dc)'),
+    'bt_0a9e4':                          _offmap_pre_store_guard(
+        0x38014d1f, 'x8', '20',
+        'registry init-tail pre-index store via x8 skipped off-map on the answered-0 walk (a9e4)', 'ST8', '0u'),
+    'bt_0a9e8':                          _offmap_store_guard(
+        0xf9016268, 'x19', 'x19 + 0x2c0ull', 'ST64', 'x8',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (a9e8)'),
+    'bt_0a9f0':                          _offmap_store_guard(
+        0xf9000117, 'x8', 'x8 + 0x0ull', 'ST64', 'c->x[23]',
+        'registry init-tail store via x8 skipped off-map on the answered-0 walk (a9f0)'),
+    'bt_0a9f8':                          _offmap_store_guard(
+        0x7907ba7f, 'x19', 'x19 + 0x3dcull', 'ST16', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (a9f8)'),
+    'bt_0a9fc':                          _offmap_pre_store_guard(
+        0x38014d1f, 'x8', '20',
+        'registry init-tail pre-index store via x8 skipped off-map on the answered-0 walk (a9fc)', 'ST8', '0u'),
+    'bt_0aa00':                          _offmap_store_guard(
+        0xf901f668, 'x19', 'x19 + 0x3e8ull', 'ST64', 'x8',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa00)'),
+    'bt_0aa08':                          _offmap_store_guard(
+        0xb903f268, 'x19', 'x19 + 0x3f0ull', 'ST32', '(uint32_t)x8',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa08)'),
+    'bt_0aa14':                          _offmap_store_guard(
+        0x39104e7f, 'x19', 'x19 + 0x413ull', 'ST8', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa14)'),
+    'bt_0aa1c':                          _offmap_store_guard(
+        0x7908327f, 'x19', 'x19 + 0x418ull', 'ST16', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa1c)'),
+    'bt_0aa20':                          _offmap_store_guard(
+        0xb9043275, 'x19', 'x19 + 0x430ull', 'ST32', '(uint32_t)c->x[21]',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa20)'),
+    'bt_0aa24':                          _offmap_pre_store_guard(
+        0x38014d3f, 'x9', '20',
+        'registry init-tail pre-index store via x9 skipped off-map on the answered-0 walk (aa24)', 'ST8', '0u'),
+    'bt_0aa28':                          _offmap_store_guard(
+        0xf9021669, 'x19', 'x19 + 0x428ull', 'ST64', 'x9',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa28)'),
+    'bt_0aa2c':                          _offmap_store_guard(
+        0x3914ce7f, 'x19', 'x19 + 0x533ull', 'ST8', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa2c)'),
+    'bt_0aa30':                          _offmap_store_guard(
+        0xf9021276, 'x19', 'x19 + 0x420ull', 'ST64', 'c->x[22]',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa30)'),
+    'bt_0aa34':                          _offmap_store_guard(
+        0xb9054a75, 'x19', 'x19 + 0x548ull', 'ST32', '(uint32_t)c->x[21]',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa34)'),
+    'bt_0aa38':                          _offmap_store_guard(
+        0x39192e7f, 'x19', 'x19 + 0x64bull', 'ST8', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa38)'),
+    'bt_0aa3c':                          _offmap_store_guard(
+        0xf9029e76, 'x19', 'x19 + 0x538ull', 'ST64', 'c->x[22]',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa3c)'),
+    'bt_0aa40':                          _offmap_store_guard(
+        0x3919ce7f, 'x19', 'x19 + 0x673ull', 'ST8', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa40)'),
+    'bt_0aa44':                          _offmap_store_guard(
+        0xf901f268, 'x19', 'x19 + 0x3e0ull', 'ST64', 'x8',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa44)'),
+    'bt_0aa4c':                          _offmap_pre_store_guard(
+        0x38014d1f, 'x8', '20',
+        'registry init-tail pre-index store via x8 skipped off-map on the answered-0 walk (aa4c)', 'ST8', '0u'),
+    'bt_0aa50':                          _offmap_store_guard(
+        0xf902a268, 'x19', 'x19 + 0x540ull', 'ST64', 'x8',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa50)'),
+    'bt_0aa5c':                          _offmap_store_guard(
+        0x3900511f, 'x8', 'x8 + 0x14ull', 'ST8', '0u',
+        'registry init-tail store via x8 skipped off-map on the answered-0 walk (aa5c)'),
+    'bt_0aa64':                          _offmap_store_guard(
+        0xf9032e69, 'x19', 'x19 + 0x658ull', 'ST64', 'x9',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa64)'),
+    'bt_0aa6c':                          _offmap_store_guard(
+        0xb9066269, 'x19', 'x19 + 0x660ull', 'ST32', '(uint32_t)x9',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa6c)'),
+    'bt_0aa70':                          _offmap_load_guard(
+        0xf9422908, 'x8', 'x8', 'x8 + 0x450ull', 'LD64',
+        'registry init-tail load via x8 skipped off-map on the answered-0 walk (aa70)'),
+    'bt_0aa78':                          _offmap_store_guard(
+        0xf9032a68, 'x19', 'x19 + 0x650ull', 'ST64', 'x8',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa78)'),
+    'bt_0aa84':                          _offmap_store_guard(
+        0x790cf27f, 'x19', 'x19 + 0x678ull', 'ST16', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa84)'),
+    'bt_0aa88':                          _offmap_store_guard(
+        0x390f467f, 'x19', 'x19 + 0x3d1ull', 'ST8', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa88)'),
+    'bt_0aa8c':                          _offmap_store_guard(
+        0xf9000113, 'x8', 'x8 + 0x0ull', 'ST64', 'x19',
+        'registry init-tail store via x8 skipped off-map on the answered-0 walk (aa8c)'),
+    'bt_0aa94':                          _offmap_store_guard(
+        0x390f6668, 'x19', 'x19 + 0x3d9ull', 'ST8', '(uint32_t)x8',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aa94)'),
+    'bt_0aa98':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70000008e0(Cpu *c); c->x[30] = 0x700000aa9cull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; f_70000008e0(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10];',
+        'mutex-style thunk f_70000008e0 skipped on the raw x0 of the answered-0 walk; the dead answer lands nowhere, the guarded 0xaa9c spill continues (aa98)'),
+    'bt_0aaa4':                          _offmap_store_guard(
+        0xb906c27f, 'x19', 'x19 + 0x6c0ull', 'ST32', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aaa4)'),
+    'bt_0aaa8':                          _offmap_store_guard(
+        0xf9000268, 'x19', 'x19 + 0x0ull', 'ST64', 'x8',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aaa8)'),
+    'bt_0aab4':                          _offmap_store_guard(
+        0xf9034268, 'x19', 'x19 + 0x680ull', 'ST64', 'x8',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aab4)'),
+    'bt_0aac0':                          _offmap_pre_store_guard(
+        0x38014d1f, 'x8', '20',
+        'registry init-tail pre-index store via x8 skipped off-map on the answered-0 walk (aac0)', 'ST8', '0u'),
+    'bt_0aac4':                          _offmap_store_guard(
+        0xf9036a68, 'x19', 'x19 + 0x6d0ull', 'ST64', 'x8',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aac4)'),
+    'bt_0aacc':                          _offmap_store_guard(
+        0xf900013f, 'x9', 'x9 + 0x0ull', 'ST64', '0ull',
+        'registry init-tail store via x9 skipped off-map on the answered-0 walk (aacc)'),
+    'bt_0aad0':                          _offmap_store_guard(
+        0xf900011f, 'x8', 'x8 + 0x0ull', 'ST64', '0ull',
+        'registry init-tail store via x8 skipped off-map on the answered-0 walk (aad0)'),
+    'bt_0aad4':                          _offmap_store_guard(
+        0xf800511f, 'x8', 'x8 + 5', 'ST64', '0ull',
+        'registry init-tail store via x8 skipped off-map on the answered-0 walk (aad4)'),
+    'bt_0aadc':                          _offmap_store_guard(
+        0xf800713f, 'x9', 'x9 + 7', 'ST64', '0ull',
+        'registry init-tail store via x9 skipped off-map on the answered-0 walk (aadc)'),
+    'bt_0aae4':                          _offmap_store_guard(
+        0x79101a68, 'x19', 'x19 + 0x80cull', 'ST16', '(uint32_t)x8',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aae4)'),
+    'bt_0aaec':                          _offmap_store_guard(
+        0x391b127f, 'x19', 'x19 + 0x6c4ull', 'ST8', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aaec)'),
+    'bt_0aaf0':                          _offmap_store_guard(
+        0xb906da75, 'x19', 'x19 + 0x6d8ull', 'ST32', '(uint32_t)c->x[21]',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aaf0)'),
+    'bt_0aaf4':                          _offmap_store_guard(
+        0x391f6e7f, 'x19', 'x19 + 0x7dbull', 'ST8', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aaf4)'),
+    'bt_0aaf8':                          _offmap_store_guard(
+        0xf9036676, 'x19', 'x19 + 0x6c8ull', 'ST64', 'c->x[22]',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aaf8)'),
+    'bt_0aafc':                          _offmap_store_guard(
+        0x391f827f, 'x19', 'x19 + 0x7e0ull', 'ST8', '0u',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (aafc)'),
+    'bt_0ab00':                          _offmap_store_guard(
+        0xf9000157, 'x10', 'x10 + 0x0ull', 'ST64', 'c->x[23]',
+        'registry init-tail store via x10 skipped off-map on the answered-0 walk (ab00)'),
+    'bt_0ab04':                          _offmap_store_guard(
+        0xf9041e7f, 'x19', 'x19 + 0x838ull', 'ST64', '0ull',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (ab04)'),
+    'bt_0ab08':                          _offmap_store_guard(
+        0xf800711f, 'x8', 'x8 + 7', 'ST64', '0ull',
+        'registry init-tail store via x8 skipped off-map on the answered-0 walk (ab08)'),
+    'bt_0ab0c':                          _offmap_store_guard(
+        0xf900011f, 'x8', 'x8 + 0x0ull', 'ST64', '0ull',
+        'registry init-tail store via x8 skipped off-map on the answered-0 walk (ab0c)'),
+    'bt_0ab10':                          _offmap_store_guard(
+        0xf800f13f, 'x9', 'x9 + 15', 'ST64', '0ull',
+        'registry init-tail store via x9 skipped off-map on the answered-0 walk (ab10)'),
+    'bt_0ab14':                          _offmap_store_guard(
+        0xf904167f, 'x19', 'x19 + 0x828ull', 'ST64', '0ull',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (ab14)'),
+    'bt_0ab18':                          _offmap_store_guard(
+        0xf904127f, 'x19', 'x19 + 0x820ull', 'ST64', '0ull',
+        'registry init-tail store via x19 skipped off-map on the answered-0 walk (ab18)'),
+    'bt_0ab1c':                          _offmap_store_guard(
+        0xf9064693, 'c->x[20]', 'c->x[20] + 0xc88ull', 'ST64', 'x19',
+        'registry init-tail store via c->x[20] skipped off-map on the answered-0 walk (ab1c)'),
+    'bt_0ab60':                          _offmap_load_guard(
+        0xf94002c0, 'c->x[22]', 'x0', 'c->x[22] + 0x0ull', 'LD64',
+        'registry lock-retry load via c->x[22] skipped off-map on the answered-0 walk (ab60)'),
+    'bt_0ab70':                          _offmap_store_guard(
+        0xf90002e0, 'c->x[23]', 'c->x[23] + 0x0ull', 'ST64', 'x0',
+        'registry lock-retry store via c->x[23] skipped off-map on the answered-0 walk (ab70)'),
+    'bt_0abb8':                          _offmap_store_guard(
+        0xf9000128, 'x9', 'x9 + 0x0ull', 'ST64', 'x8',
+        'run82 fault block store via x9 skipped off-map on the answered-0 walk (abb8)'),
+    'bt_0abc0':                          _offmap_store_guard(
+        0xf90002ff, 'c->x[23]', 'c->x[23] + 0x0ull', 'ST64', '0ull',
+        'run82 fault block store via c->x[23] skipped off-map on the answered-0 walk (abc0)'),
+    'bt_0abc4':                          _offmap_store_guard(
+        0xf900011f, 'x8', 'x8 + 0x0ull', 'ST64', '0ull',
+        'run82 fault block store via x8 skipped off-map on the answered-0 walk (abc4)'),
+    'bt_0abcc':                          _offmap_store_guard(
+        0xf900011f, 'x8', 'x8 + 0x0ull', 'ST64', '0ull',
+        'run82 fault block store via x8 skipped off-map on the answered-0 walk (abcc)'),
+    'bt_0ac20':                          _offmap_blr_guard(
+        'c->pc = x9; c->x[30] = 0x700000ac24ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[19] = x19; c->sp = sp_; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10];',
+        'alloc-chain virtual probe answered 0 through the dispatch_lookup backstop when x9 is a raw addend, the spill-based chain continues (ac20)', cond='x9', w=0xd63f0120),
+    'bt_0ad88':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x700000ad8cull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[19] = x19; c->sp = sp_; rt_dispatch(c); x0 = c->x[0]; x8 = c->x[8]; x9 = c->x[9]; x10 = c->x[10];',
+        'deep virtual probe answered 0 through the dispatch_lookup backstop; the insurance for the dead L_ad4c chain (ad88)'),
 }
 
 

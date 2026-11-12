@@ -6649,6 +6649,26 @@ PATCHES = {
         'x0',
         'extern void f_700159fec0(Cpu *c); c->x[30] = 0x7000e9427cull; c->x[0] = x0; c->x[8] = x8; f_700159fec0(c);',
         'lock/TLS thunk f_700159fec0 kept ALWAYS-CALL per the #49 rule -- same legitimacy, and its guarded lift answers the dead x0 0 (4278)'),
+    'bz_939c8':                          _offmap_call_skip_guard(
+        'c->x[0]',
+        'extern void f_70015a0800(Cpu *c); c->x[30] = 0x7000e939ccull; c->x[1] = x1; f_70015a0800(c);',
+        'implicit-x0 bl (no spill, x0 rides c->x[0]) skipped when the dead answered-0 x0 would enter the GUARD-FREE sdk slot stub of thunk f_70015a0800 per the #49 rule (939c8)'),
+    'bz_93a08':                          _offmap_call_skip_guard(
+        'c->x[0]',
+        'extern void f_70015a0810(Cpu *c); c->x[30] = 0x7000e93a0cull; c->x[1] = x1; f_70015a0810(c);',
+        "run107 fault site: thunk f_70015a0810 slot-dispatched into the guard-free sdk stub f_700263b598 where str xzr, [x0] with the dead implicit x0 = 0 died (signal 11 accessing 0x0, guest lr 7000e93a0c, host pc f_700263b598+10); skipped per the #49 rule, the answered-0 continuation is exactly where the guarded chain already expects the dead thunk (93a08)"),
+    'bz_93a30':                          _offmap_call_skip_guard(
+        'c->x[0]',
+        'extern void f_70015a0830(Cpu *c); c->x[30] = 0x7000e93a34ull; c->x[1] = x1; f_70015a0830(c);',
+        'implicit-x0 bl skipped when the dead x0 would enter guard-free sdk stub f_70015a0830 per the #49 rule (93a30)'),
+    'bz_93be0':                          _offmap_call_skip_guard(
+        'c->x[0]',
+        'extern void f_7000e9b794(Cpu *c); c->x[30] = 0x7000e93be4ull; c->x[1] = x1; f_7000e9b794(c);',
+        'implicit-x0 bl skipped on the dead x0; the guarded main callee answers 0 itself but skipping keeps the same answered-0 shape (93be0)'),
+    'bz_93d98':                          _offmap_call_skip_guard(
+        'c->x[0]',
+        'extern void f_7000e9aa74(Cpu *c); c->x[30] = 0x7000e93d9cull; f_7000e9aa74(c);',
+        'implicit-x0 bl skipped on the dead x0; guarded main callee answered-0 either way (93d98)'),
 }
 
 

@@ -5,6 +5,7 @@
 
 #include "hle.h"
 #include "ipc.h"
+#include "control_mem.h"
 
 #ifdef __APPLE__
 extern const ServiceDef __start_services[] __asm__("section$start$__DATA$__services");
@@ -16,6 +17,27 @@ extern const ServiceDef __start_services[], __stop_services[];  // (ELF: defined
 __attribute__((section(".svc$a"), used)) static const ServiceDef __start_services[1];
 __attribute__((section(".svc$z"), used)) static const ServiceDef __stop_services[1];
 #endif
+
+// SAVAGEWIND_IPC_TRACE=1: every request the guest sends, one line: service, cmd, the guest lr, and the
+// caller frame chain (like rt_fatal_trace's walk: [fp + 8] is the caller's return address) -- the lr is
+// the shared nn::sf::hipc::SendSyncRequest wrapper, so the GAME caller is only a few frames above it.
+// run108/110 ended nnMain right after four am queries; this trace pins which client call gates the exit.
+static void ipc_trace_req(Cpu *c, Service *svc, uint32_t cmd, uint32_t handle) {
+    static int on = -1;
+    if (on < 0) on = getenv("SAVAGEWIND_IPC_TRACE") != NULL;
+    if (!on) return;
+    char frames[160];
+    int n = snprintf(frames, sizeof frames, " lr %llx", (unsigned long long)c->x[30]);
+    uint64_t fp = c->x[29];
+    for (int i = 0; i < 6 && fp; i++) {
+        uint64_t rec[2];
+        if ((fp & 7) || !control_mem_peek(fp, rec, sizeof rec)) break;
+        n += snprintf(frames + n, sizeof frames - n, " %llx", (unsigned long long)rec[1]);
+        if (rec[0] <= fp) break;
+        fp = rec[0];
+    }
+    LOG("[ipc>] %-12s cmd %-3u%s handle %x\n", svc->name, cmd, frames, handle);
+}
 
 static void stub_handler(Service *s, IpcReq *req, IpcResp *resp) {
     LOG("[ipc] STUB %s cmd %u (in %u bytes, x%d a%d b%d c%d) -> ok\n", s->name, req->cmd, req->data_size, req->nx,
@@ -179,6 +201,7 @@ int ipc_handle_request(Cpu *c, uint32_t handle) {
         req.cmd = req.type - 16;
         req.data = (const uint8_t *)raw;
         req.data_size = raw_words * 4;
+        ipc_trace_req(c, sess->svc, req.cmd, handle);
         sess->svc->handler(sess->svc, &req, &resp);
         return tipc_write_response(msg, req.type, &resp);
     }
@@ -224,6 +247,7 @@ int ipc_handle_request(Cpu *c, uint32_t handle) {
                 return 0xE401;
             }
         }
+        ipc_trace_req(c, target, req.cmd, handle);
         target->handler(target, &req, &resp);
     } else if (req.type == 5 || req.type == 7) {  // control
         req.cmd = *(uint32_t *)(payload + 8);

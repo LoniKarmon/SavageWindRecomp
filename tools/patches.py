@@ -5874,6 +5874,781 @@ PATCHES = {
     'by_01068':                          _offmap_blr_guard(
         'c->pc = x8; c->x[30] = 0x700000106cull; c->x[0] = x0; c->x[8] = x8; rt_dispatch(c);',
         'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (1068)'),
+    'bz_939ac':                          _offmap_load_guard(
+        0xf9400288, 'c->x[20]', 'x8', 'c->x[20] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[20] skipped off-map (39ac)'),
+    'bz_939b8':                          _offmap_load_guard(
+        0xb940ce61, 'c->x[19]', 'x1', 'c->x[19] + 0xccull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (39b8)'),
+    'bz_939bc':                          _offmap_load_guard(
+        0xf9401908, 'x8', 'x8', 'x8 + 0x30ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (39bc)'),
+    'bz_939c0':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e939c4ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (39c0)'),
+    'bz_939c4':                          _offmap_load_guard(
+        0xb940ce61, 'c->x[19]', 'x1', 'c->x[19] + 0xccull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (39c4)'),
+    'bz_939cc':                          _offmap_load_guard(
+        0xb940d261, 'c->x[19]', 'x1', 'c->x[19] + 0xd0ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (39cc)'),
+    'bz_939d4':                          _offmap_load_guard(
+        0xf9400288, 'c->x[20]', 'x8', 'c->x[20] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[20] skipped off-map (39d4)'),
+    'bz_939e0':                          _offmap_load_guard(
+        0xf9401908, 'x8', 'x8', 'x8 + 0x30ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (39e0)'),
+    'bz_939e4':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e939e8ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (39e4)'),
+    'bz_939fc':                          _offmap_load_guard(
+        0xb940d262, 'c->x[19]', 'c->x[2]', 'c->x[19] + 0xd0ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (39fc)'),
+    'bz_93a14':                          _offmap_store_guard(
+        0xf900c277, 'c->x[19]', 'c->x[19] + 0x180ull', 'ST64', 'c->x[23]',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (3a14)'),
+    'bz_93a3c':                          _offmap_load_guard(
+        0xf940d661, 'c->x[19]', 'x1', 'c->x[19] + 0x1a8ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3a3c)'),
+    'bz_93a48':                          _offmap_load_guard(
+        0xf940d661, 'c->x[19]', 'x1', 'c->x[19] + 0x1a8ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3a48)'),
+    'bz_93a54':                          _offmap_u128_load_guard(
+        0x2d568660, 'c->x[19]', 'c->v[0]', 'c->v[1]', 'c->x[19] + 180',
+        'u128 a = LD32(ea), b = LD32(ea + 4); c->v[0] = a; c->v[1] = b;',
+        'f_7000e93960 answered-0 manager-method ldp pair load into v-regs via c->x[19] skipped off-map (3a54)'),
+    'bz_93a60':                          _offmap_load_guard(
+        0xbd4002a2, 'c->x[21]', 'c->v[2]', 'c->x[21] + 0x0ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[21] skipped off-map (3a60)'),
+    'bz_93a64':                          _offmap_store_guard(
+        0xbd011262, 'c->x[19]', 'c->x[19] + 0x110ull', 'ST32', 'VS32(2)',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (3a64)'),
+    'bz_93a6c':                          _offmap_load_guard(
+        0xbd4006a2, 'c->x[21]', 'c->v[2]', 'c->x[21] + 0x4ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[21] skipped off-map (3a6c)'),
+    'bz_93a70':                          _offmap_store_guard(
+        0xf9008e7f, 'c->x[19]', 'c->x[19] + 0x118ull', 'ST64', '0ull',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (3a70)'),
+    'bz_93a74':                          _offmap_store_guard(
+        0xbd011662, 'c->x[19]', 'c->x[19] + 0x114ull', 'ST32', 'VS32(2)',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (3a74)'),
+    'bz_93a78':                          _offmap_store_guard(
+        0xbd012260, 'c->x[19]', 'c->x[19] + 0x120ull', 'ST32', 'VS32(0)',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (3a78)'),
+    'bz_93a80':                          _offmap_store_guard(
+        0xbd012660, 'c->x[19]', 'c->x[19] + 0x124ull', 'ST32', 'VS32(0)',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (3a80)'),
+    'bz_93ab8':                          _offmap_load_guard(
+        0xf9466508, 'x8', 'x8', 'x8 + 0xcc8ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3ab8)'),
+    'bz_93abc':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3abc)'),
+    'bz_93ac0':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93ac4ull; c->x[0] = x0; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3ac0)'),
+    'bz_93ac4':                          _offmap_load_guard(
+        0x3942fa68, 'c->x[19]', 'x8', 'c->x[19] + 0xbeull', 'LD8',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3ac4)'),
+    'bz_93acc':                          _offmap_load_guard(
+        0xb940e260, 'c->x[19]', 'x0', 'c->x[19] + 0xe0ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3acc)'),
+    'bz_93ad0':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e9bba8(Cpu *c); c->x[30] = 0x7000e93ad4ull; c->x[0] = x0; c->x[8] = x8; f_7000e9bba8(c);',
+        'f_7000e9bba8 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3ad0)'),
+    'bz_93ae0':                          _offmap_load_guard(
+        0xf9466908, 'x8', 'x8', 'x8 + 0xcd0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3ae0)'),
+    'bz_93ae4':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3ae4)'),
+    'bz_93ae8':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93aecull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3ae8)'),
+    'bz_93af8':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e8c250(Cpu *c); c->x[30] = 0x7000e93afcull; c->x[0] = x0; c->x[1] = x1; f_7000e8c250(c);',
+        'f_7000e8c250 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3af8)'),
+    'bz_93b04':                          _offmap_blr_guard(
+        'c->pc = c->x[24]; c->x[30] = 0x7000e93b08ull; c->x[1] = x1; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch c->x[24] is off-map or unmapped (3b04)', cond='c->x[24]', w=0xd63f0300),
+    'bz_93b18':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_700000ecb0(Cpu *c); c->x[30] = 0x7000e93b1cull; c->x[0] = x0; c->x[1] = x1; f_700000ecb0(c);',
+        'f_700000ecb0 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3b18)'),
+    'bz_93b24':                          _offmap_load_guard(
+        0xf9468318, 'c->x[24]', 'c->x[24]', 'c->x[24] + 0xd00ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[24] skipped off-map (3b24)'),
+    'bz_93b30':                          _offmap_load_guard(
+        0xf9400308, 'c->x[24]', 'x8', 'c->x[24] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[24] skipped off-map (3b30)'),
+    'bz_93b34':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93b38ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3b34)'),
+    'bz_93b38':                          _offmap_load_guard(
+        0xf9400308, 'c->x[24]', 'x8', 'c->x[24] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[24] skipped off-map (3b38)'),
+    'bz_93b48':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93b4cull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3b48)'),
+    'bz_93b64':                          _offmap_load_guard(
+        0x3942fa68, 'c->x[19]', 'x8', 'c->x[19] + 0xbeull', 'LD8',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3b64)'),
+    'bz_93b68':                          _offmap_load_guard(
+        0x3942fe69, 'c->x[19]', 'c->x[9]', 'c->x[19] + 0xbfull', 'LD8',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3b68)'),
+    'bz_93b8c':                          _offmap_load_guard(
+        0xf9469908, 'x8', 'x8', 'x8 + 0xd30ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3b8c)'),
+    'bz_93b98':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3b98)'),
+    'bz_93b9c':                          _offmap_load_guard(
+        0xf9442c21, 'x1', 'x1', 'x1 + 0x858ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x1 skipped off-map (3b9c)'),
+    'bz_93ba4':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93ba8ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3ba4)'),
+    'bz_93ba8':                          _offmap_load_guard(
+        0x3942fe68, 'c->x[19]', 'x8', 'c->x[19] + 0xbfull', 'LD8',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3ba8)'),
+    'bz_93bac':                          _offmap_load_guard(
+        0x3942fa69, 'c->x[19]', 'c->x[9]', 'c->x[19] + 0xbeull', 'LD8',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3bac)'),
+    'bz_93bb0':                          _offmap_load_guard(
+        0xb940e66a, 'c->x[19]', 'c->x[10]', 'c->x[19] + 0xe4ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3bb0)'),
+    'bz_93bd4':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e8c250(Cpu *c); c->x[30] = 0x7000e93bd8ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; f_7000e8c250(c);',
+        'f_7000e8c250 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3bd4)'),
+    'bz_93bec':                          _offmap_load_guard(
+        0xf941e35a, 'c->x[26]', 'c->x[26]', 'c->x[26] + 0x3c0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[26] skipped off-map (3bec)'),
+    'bz_93bf4':                          _offmap_store_guard(
+        0xf9000357, 'c->x[26]', 'c->x[26] + 0x0ull', 'ST64', 'c->x[23]',
+        'f_7000e93960 answered-0 manager-method store via c->x[26] skipped off-map (3bf4)'),
+    'bz_93bf8':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000eb37f8(Cpu *c); c->x[30] = 0x7000e93bfcull; c->x[0] = x0; c->x[1] = x1; f_7000eb37f8(c);',
+        'f_7000eb37f8 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3bf8)'),
+    'bz_93c04':                          _offmap_load_guard(
+        0xf946f108, 'x8', 'x8', 'x8 + 0xde0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3c04)'),
+    'bz_93c08':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3c08)'),
+    'bz_93c0c':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93c10ull; c->x[0] = x0; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3c0c)'),
+    'bz_93c18':                          _offmap_load_guard(
+        0xf946f508, 'x8', 'x8', 'x8 + 0xde8ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3c18)'),
+    'bz_93c20':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3c20)'),
+    'bz_93c24':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93c28ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3c24)'),
+    'bz_93c28':                          _offmap_load_guard(
+        0xf9400348, 'c->x[26]', 'x8', 'c->x[26] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[26] skipped off-map (3c28)'),
+    'bz_93c30':                          _offmap_load_guard(
+        0xf9401901, 'x8', 'x1', 'x8 + 0x30ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3c30)'),
+    'bz_93c38':                          _offmap_load_guard(
+        0xf946ed08, 'x8', 'x8', 'x8 + 0xdd8ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3c38)'),
+    'bz_93c3c':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3c3c)'),
+    'bz_93c40':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93c44ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3c40)'),
+    'bz_93c44':                          _offmap_load_guard(
+        0xb940d668, 'c->x[19]', 'x8', 'c->x[19] + 0xd4ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3c44)'),
+    'bz_93c54':                          _offmap_load_guard(
+        0xf9400308, 'c->x[24]', 'x8', 'c->x[24] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[24] skipped off-map (3c54)'),
+    'bz_93c64':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93c68ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3c64)'),
+    'bz_93c74':                          _offmap_load_guard(
+        0xf946fd08, 'x8', 'x8', 'x8 + 0xdf8ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3c74)'),
+    'bz_93c7c':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3c7c)'),
+    'bz_93c80':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93c84ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3c80)'),
+    'bz_93c84':                          _offmap_load_guard(
+        0xb940da68, 'c->x[19]', 'x8', 'c->x[19] + 0xd8ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3c84)'),
+    'bz_93c94':                          _offmap_load_guard(
+        0xf9400308, 'c->x[24]', 'x8', 'c->x[24] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[24] skipped off-map (3c94)'),
+    'bz_93ca4':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93ca8ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3ca4)'),
+    'bz_93cb4':                          _offmap_load_guard(
+        0xf946f908, 'x8', 'x8', 'x8 + 0xdf0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3cb4)'),
+    'bz_93cbc':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3cbc)'),
+    'bz_93cc0':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93cc4ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3cc0)'),
+    'bz_93cc4':                          _offmap_load_guard(
+        0xb940de68, 'c->x[19]', 'x8', 'c->x[19] + 0xdcull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3cc4)'),
+    'bz_93cd4':                          _offmap_load_guard(
+        0xf9400308, 'c->x[24]', 'x8', 'c->x[24] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[24] skipped off-map (3cd4)'),
+    'bz_93ce4':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93ce8ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3ce4)'),
+    'bz_93cf4':                          _offmap_load_guard(
+        0xf9470108, 'x8', 'x8', 'x8 + 0xe00ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3cf4)'),
+    'bz_93cfc':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3cfc)'),
+    'bz_93d00':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93d04ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3d00)'),
+    'bz_93d0c':                          _offmap_load_guard(
+        0xf9470508, 'x8', 'x8', 'x8 + 0xe08ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3d0c)'),
+    'bz_93d10':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3d10)'),
+    'bz_93d14':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93d18ull; c->x[0] = x0; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3d14)'),
+    'bz_93d18':                          _offmap_load_guard(
+        0xf9400288, 'c->x[20]', 'x8', 'c->x[20] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[20] skipped off-map (3d18)'),
+    'bz_93d2c':                          _offmap_load_guard(
+        0xf9401908, 'x8', 'x8', 'x8 + 0x30ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3d2c)'),
+    'bz_93d30':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93d34ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3d30)'),
+    'bz_93d3c':                          _offmap_load_guard(
+        0xf9470908, 'x8', 'x8', 'x8 + 0xe10ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3d3c)'),
+    'bz_93d48':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3d48)'),
+    'bz_93d4c':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93d50ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3d4c)'),
+    'bz_93d5c':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e8c250(Cpu *c); c->x[30] = 0x7000e93d60ull; c->x[0] = x0; c->x[1] = x1; f_7000e8c250(c);',
+        'f_7000e8c250 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3d5c)'),
+    'bz_93d60':                          _offmap_store_guard(
+        0xf900ce60, 'c->x[19]', 'c->x[19] + 0x198ull', 'ST64', 'x0',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (3d60)'),
+    'bz_93d6c':                          _offmap_load_guard(
+        0xf9473908, 'x8', 'x8', 'x8 + 0xe70ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3d6c)'),
+    'bz_93d70':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3d70)'),
+    'bz_93d74':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93d78ull; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3d74)'),
+    'bz_93d78':                          _offmap_load_guard(
+        0xf9400340, 'c->x[26]', 'x0', 'c->x[26] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[26] skipped off-map (3d78)'),
+    'bz_93d7c':                          _offmap_load_guard(
+        0xf940ce61, 'c->x[19]', 'x1', 'c->x[19] + 0x198ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3d7c)'),
+    'bz_93d80':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e9bb0c(Cpu *c); c->x[30] = 0x7000e93d84ull; c->x[0] = x0; c->x[1] = x1; f_7000e9bb0c(c);',
+        'f_7000e9bb0c skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3d80)'),
+    'bz_93d90':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e8c250(Cpu *c); c->x[30] = 0x7000e93d94ull; c->x[0] = x0; c->x[1] = x1; f_7000e8c250(c);',
+        'f_7000e8c250 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3d90)'),
+    'bz_93d9c':                          _offmap_load_guard(
+        0xf940da61, 'c->x[19]', 'x1', 'c->x[19] + 0x1b0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3d9c)'),
+    'bz_93da4':                          _offmap_store_guard(
+        0xf9009a77, 'c->x[19]', 'c->x[19] + 0x130ull', 'ST64', 'c->x[23]',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (3da4)'),
+    'bz_93da8':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0880(Cpu *c); c->x[30] = 0x7000e93dacull; c->x[0] = x0; c->x[1] = x1; f_70015a0880(c);',
+        'f_70015a0880 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3da8)'),
+    'bz_93dac':                          _offmap_load_guard(
+        0xf9409a68, 'c->x[19]', 'x8', 'c->x[19] + 0x130ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3dac)'),
+    'bz_93db4':                          _offmap_store_guard(
+        0xf9004d09, 'x8', 'x8 + 0x98ull', 'ST64', 'c->x[9]',
+        'f_7000e93960 answered-0 manager-method store via x8 skipped off-map (3db4)'),
+    'bz_93db8':                          _offmap_load_guard(
+        0xf9409a60, 'c->x[19]', 'x0', 'c->x[19] + 0x130ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3db8)'),
+    'bz_93dbc':                          _offmap_load_guard(
+        0xb940a261, 'c->x[19]', 'x1', 'c->x[19] + 0xa0ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3dbc)'),
+    'bz_93dc0':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e9af20(Cpu *c); c->x[30] = 0x7000e93dc4ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; f_7000e9af20(c);',
+        'f_7000e9af20 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3dc0)'),
+    'bz_93dc4':                          _offmap_load_guard(
+        0xf9409a60, 'c->x[19]', 'x0', 'c->x[19] + 0x130ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3dc4)'),
+    'bz_93dc8':                          _offmap_load_guard(
+        0x3942f661, 'c->x[19]', 'x1', 'c->x[19] + 0xbdull', 'LD8',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3dc8)'),
+    'bz_93dcc':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e9af44(Cpu *c); c->x[30] = 0x7000e93dd0ull; c->x[0] = x0; c->x[1] = x1; f_7000e9af44(c);',
+        'f_7000e9af44 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3dcc)'),
+    'bz_93dd0':                          _offmap_u128_load_guard(
+        0x2d568660, 'c->x[19]', 'c->v[0]', 'c->v[1]', 'c->x[19] + 180',
+        'u128 a = LD32(ea), b = LD32(ea + 4); c->v[0] = a; c->v[1] = b;',
+        'f_7000e93960 answered-0 manager-method ldp pair load into v-regs via c->x[19] skipped off-map (3dd0)'),
+    'bz_93dd8':                          _offmap_load_guard(
+        0xf9409a60, 'c->x[19]', 'x0', 'c->x[19] + 0x130ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3dd8)'),
+    'bz_93de0':                          _offmap_load_guard(
+        0xf9400008, 'x0', 'x8', 'x0 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x0 skipped off-map (3de0)'),
+    'bz_93de8':                          _offmap_pair_store_guard(
+        0x2d010400, 'x0', 'x0 + 8', 'VS32(0)', 'VS32(1)',
+        'f_7000e93960 answered-0 manager-method pair store via x0 skipped off-map (3de8)'),
+    'bz_93dec':                          _offmap_load_guard(
+        0xf9400908, 'x8', 'x8', 'x8 + 0x10ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3dec)'),
+    'bz_93df0':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93df4ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3df0)'),
+    'bz_93df4':                          _offmap_load_guard(
+        0xb940a268, 'c->x[19]', 'x8', 'c->x[19] + 0xa0ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3df4)'),
+    'bz_93e04':                          _offmap_load_guard(
+        0xbd46f501, 'x8', 'c->v[1]', 'x8 + 0x6f4ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3e04)'),
+    'bz_93e18':                          _offmap_load_guard(
+        0xf9410508, 'x8', 'x8', 'x8 + 0x208ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3e18)'),
+    'bz_93e20':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3e20)'),
+    'bz_93e30':                          _offmap_store_guard(
+        0xf9009668, 'c->x[19]', 'c->x[19] + 0x128ull', 'ST64', 'x8',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (3e30)'),
+    'bz_93e34':                          _offmap_load_guard(
+        0xf9400340, 'c->x[26]', 'x0', 'c->x[26] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[26] skipped off-map (3e34)'),
+    'bz_93e38':                          _offmap_load_guard(
+        0xf9409a61, 'c->x[19]', 'x1', 'c->x[19] + 0x130ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3e38)'),
+    'bz_93e3c':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e9bb1c(Cpu *c); c->x[30] = 0x7000e93e40ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; f_7000e9bb1c(c);',
+        'f_7000e9bb1c skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3e3c)'),
+    'bz_93e48':                          _offmap_lda_guard(
+        0x8dffd08, 'x8', 'x8',
+        'f_7000e93960 answered-0 manager-method acquire load via x8 skipped off-map (3e48)'),
+    'bz_93e54':                          _offmap_load_guard(
+        0xf9400348, 'c->x[26]', 'x8', 'c->x[26] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[26] skipped off-map (3e54)'),
+    'bz_93e64':                          _offmap_load_guard(
+        0xf9401917, 'x8', 'c->x[23]', 'x8 + 0x30ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3e64)'),
+    'bz_93e68':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e8c250(Cpu *c); c->x[30] = 0x7000e93e6cull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; f_7000e8c250(c);',
+        'f_7000e8c250 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3e68)'),
+    'bz_93e6c':                          _offmap_store_guard(
+        0xf900ae60, 'c->x[19]', 'c->x[19] + 0x158ull', 'ST64', 'x0',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (3e6c)'),
+    'bz_93e78':                          _offmap_load_guard(
+        0xf943d508, 'x8', 'x8', 'x8 + 0x7a8ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3e78)'),
+    'bz_93e7c':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3e7c)'),
+    'bz_93e80':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93e84ull; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3e80)'),
+    'bz_93e90':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e8c250(Cpu *c); c->x[30] = 0x7000e93e94ull; c->x[0] = x0; c->x[1] = x1; f_7000e8c250(c);',
+        'f_7000e8c250 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3e90)'),
+    'bz_93e94':                          _offmap_store_guard(
+        0xf900a660, 'c->x[19]', 'c->x[19] + 0x148ull', 'ST64', 'x0',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (3e94)'),
+    'bz_93ea0':                          _offmap_load_guard(
+        0xf947d77b, 'c->x[27]', 'c->x[27]', 'c->x[27] + 0xfa8ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[27] skipped off-map (3ea0)'),
+    'bz_93ea4':                          _offmap_load_guard(
+        0xf9400368, 'c->x[27]', 'x8', 'c->x[27] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[27] skipped off-map (3ea4)'),
+    'bz_93ea8':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93eacull; c->x[0] = x0; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3ea8)'),
+    'bz_93eb4':                          _offmap_load_guard(
+        0xf947d108, 'x8', 'x8', 'x8 + 0xfa0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3eb4)'),
+    'bz_93ebc':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3ebc)'),
+    'bz_93ec0':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93ec4ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3ec0)'),
+    'bz_93ecc':                          _offmap_load_guard(
+        0xf947df9c, 'c->x[28]', 'c->x[28]', 'c->x[28] + 0xfb8ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[28] skipped off-map (3ecc)'),
+    'bz_93ed4':                          _offmap_load_guard(
+        0xf9400388, 'c->x[28]', 'x8', 'c->x[28] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[28] skipped off-map (3ed4)'),
+    'bz_93ed8':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93edcull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3ed8)'),
+    'bz_93edc':                          _offmap_load_guard(
+        0xf9460b20, 'c->x[25]', 'x0', 'c->x[25] + 0xc10ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[25] skipped off-map (3edc)'),
+    'bz_93ee8':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000007c20(Cpu *c); c->x[30] = 0x7000e93eecull; c->x[0] = x0; c->x[1] = x1; f_7000007c20(c);',
+        'f_7000007c20 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3ee8)'),
+    'bz_93ef0':                          _offmap_load_guard(
+        0xf9460b22, 'c->x[25]', 'c->x[2]', 'c->x[25] + 0xc10ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[25] skipped off-map (3ef0)'),
+    'bz_93ef8':                          _offmap_load_guard(
+        0xf947d908, 'x8', 'x8', 'x8 + 0xfb0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3ef8)'),
+    'bz_93f00':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3f00)'),
+    'bz_93f04':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93f08ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3f04)'),
+    'bz_93f0c':                          _offmap_load_guard(
+        0xf940a660, 'c->x[19]', 'x0', 'c->x[19] + 0x148ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3f0c)'),
+    'bz_93f14':                          _offmap_load_guard(
+        0xf947f339, 'c->x[25]', 'c->x[25]', 'c->x[25] + 0xfe0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[25] skipped off-map (3f14)'),
+    'bz_93f18':                          _offmap_load_guard(
+        0xf9400328, 'c->x[25]', 'x8', 'c->x[25] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[25] skipped off-map (3f18)'),
+    'bz_93f1c':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93f20ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3f1c)'),
+    'bz_93f20':                          _offmap_load_guard(
+        0xf9400308, 'c->x[24]', 'x8', 'c->x[24] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[24] skipped off-map (3f20)'),
+    'bz_93f34':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93f38ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3f34)'),
+    'bz_93f38':                          _offmap_load_guard(
+        0xf9400288, 'c->x[20]', 'x8', 'c->x[20] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[20] skipped off-map (3f38)'),
+    'bz_93f40':                          _offmap_load_guard(
+        0xb940c661, 'c->x[19]', 'x1', 'c->x[19] + 0xc4ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3f40)'),
+    'bz_93f48':                          _offmap_load_guard(
+        0xf9401908, 'x8', 'x8', 'x8 + 0x30ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3f48)'),
+    'bz_93f4c':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93f50ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3f4c)'),
+    'bz_93f50':                          _offmap_store_guard(
+        0xf900aa60, 'c->x[19]', 'c->x[19] + 0x150ull', 'ST64', 'x0',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (3f50)'),
+    'bz_93f58':                          _offmap_load_guard(
+        0xf940ae60, 'c->x[19]', 'x0', 'c->x[19] + 0x158ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3f58)'),
+    'bz_93f5c':                          _offmap_load_guard(
+        0xf943e108, 'x8', 'x8', 'x8 + 0x7c0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3f5c)'),
+    'bz_93f68':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3f68)'),
+    'bz_93f6c':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93f70ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3f6c)'),
+    'bz_93f74':                          _offmap_load_guard(
+        0xf940ae60, 'c->x[19]', 'x0', 'c->x[19] + 0x158ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3f74)'),
+    'bz_93f7c':                          _offmap_load_guard(
+        0xf943e508, 'x8', 'x8', 'x8 + 0x7c8ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3f7c)'),
+    'bz_93f80':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (3f80)'),
+    'bz_93f84':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93f88ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3f84)'),
+    'bz_93f88':                          _offmap_load_guard(
+        0xf9400340, 'c->x[26]', 'x0', 'c->x[26] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[26] skipped off-map (3f88)'),
+    'bz_93f8c':                          _offmap_load_guard(
+        0xf940ae61, 'c->x[19]', 'x1', 'c->x[19] + 0x158ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3f8c)'),
+    'bz_93f90':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e9bb14(Cpu *c); c->x[30] = 0x7000e93f94ull; c->x[0] = x0; c->x[1] = x1; f_7000e9bb14(c);',
+        'f_7000e9bb14 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (3f90)'),
+    'bz_93f94':                          _offmap_load_guard(
+        0xf9400308, 'c->x[24]', 'x8', 'c->x[24] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[24] skipped off-map (3f94)'),
+    'bz_93fa4':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93fa8ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3fa4)'),
+    'bz_93fa8':                          _offmap_load_guard(
+        0xf9400308, 'c->x[24]', 'x8', 'c->x[24] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[24] skipped off-map (3fa8)'),
+    'bz_93fb8':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93fbcull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3fb8)'),
+    'bz_93fbc':                          _offmap_load_guard(
+        0xf9400308, 'c->x[24]', 'x8', 'c->x[24] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[24] skipped off-map (3fbc)'),
+    'bz_93fcc':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e93fd0ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (3fcc)'),
+    'bz_93fd0':                          _offmap_load_guard(
+        0xb940ca68, 'c->x[19]', 'x8', 'c->x[19] + 0xc8ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (3fd0)'),
+    'bz_94018':                          _offmap_store_guard(
+        0xb9017a68, 'c->x[19]', 'c->x[19] + 0x178ull', 'ST32', '(uint32_t)x8',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (4018)'),
+    'bz_9401c':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e8c250(Cpu *c); c->x[30] = 0x7000e94020ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; f_7000e8c250(c);',
+        'f_7000e8c250 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (401c)'),
+    'bz_94020':                          _offmap_load_guard(
+        0xf9400368, 'c->x[27]', 'x8', 'c->x[27] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[27] skipped off-map (4020)'),
+    'bz_94024':                          _offmap_store_guard(
+        0xf900ba60, 'c->x[19]', 'c->x[19] + 0x170ull', 'ST64', 'x0',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (4024)'),
+    'bz_9402c':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e94030ull; c->x[0] = x0; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (402c)'),
+    'bz_94030':                          _offmap_load_guard(
+        0xf9400348, 'c->x[26]', 'x8', 'c->x[26] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[26] skipped off-map (4030)'),
+    'bz_94038':                          _offmap_load_guard(
+        0xf9401901, 'x8', 'x1', 'x8 + 0x30ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (4038)'),
+    'bz_94040':                          _offmap_load_guard(
+        0xf947d108, 'x8', 'x8', 'x8 + 0xfa0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (4040)'),
+    'bz_94044':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (4044)'),
+    'bz_94048':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e9404cull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (4048)'),
+    'bz_9404c':                          _offmap_load_guard(
+        0xf9400388, 'c->x[28]', 'x8', 'c->x[28] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[28] skipped off-map (404c)'),
+    'bz_94058':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e9405cull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (4058)'),
+    'bz_9405c':                          _offmap_load_guard(
+        0xb9417a60, 'c->x[19]', 'x0', 'c->x[19] + 0x178ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (405c)'),
+    'bz_94068':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000007c20(Cpu *c); c->x[30] = 0x7000e9406cull; c->x[0] = x0; c->x[1] = x1; f_7000007c20(c);',
+        'f_7000007c20 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (4068)'),
+    'bz_94070':                          _offmap_load_guard(
+        0xb9417a62, 'c->x[19]', 'c->x[2]', 'c->x[19] + 0x178ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (4070)'),
+    'bz_94078':                          _offmap_load_guard(
+        0xf947d908, 'x8', 'x8', 'x8 + 0xfb0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (4078)'),
+    'bz_94080':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (4080)'),
+    'bz_94084':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e94088ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (4084)'),
+    'bz_94088':                          _offmap_load_guard(
+        0xf940ba60, 'c->x[19]', 'x0', 'c->x[19] + 0x170ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (4088)'),
+    'bz_94090':                          _offmap_load_guard(
+        0xf9400328, 'c->x[25]', 'x8', 'c->x[25] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[25] skipped off-map (4090)'),
+    'bz_94094':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e94098ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (4094)'),
+    'bz_94098':                          _offmap_load_guard(
+        0xf9400348, 'c->x[26]', 'x8', 'c->x[26] + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[26] skipped off-map (4098)'),
+    'bz_940a0':                          _offmap_load_guard(
+        0xf9401901, 'x8', 'x1', 'x8 + 0x30ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (40a0)'),
+    'bz_940a8':                          _offmap_load_guard(
+        0xf9405508, 'x8', 'x8', 'x8 + 0xa8ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (40a8)'),
+    'bz_940ac':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (40ac)'),
+    'bz_940b0':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e940b4ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (40b0)'),
+    'bz_940bc':                          _offmap_load_guard(
+        0xf9405908, 'x8', 'x8', 'x8 + 0xb0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (40bc)'),
+    'bz_940c0':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (40c0)'),
+    'bz_940c4':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e940c8ull; c->x[0] = x0; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (40c4)'),
+    'bz_940cc':                          _offmap_load_guard(
+        0xf940a661, 'c->x[19]', 'x1', 'c->x[19] + 0x148ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (40cc)'),
+    'bz_940d4':                          _offmap_load_guard(
+        0xb940c262, 'c->x[19]', 'c->x[2]', 'c->x[19] + 0xc0ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (40d4)'),
+    'bz_940e0':                          _offmap_load_guard(
+        0xf9405d08, 'x8', 'x8', 'x8 + 0xb8ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (40e0)'),
+    'bz_940e4':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (40e4)'),
+    'bz_940e8':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e940ecull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (40e8)'),
+    'bz_940f8':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e8c250(Cpu *c); c->x[30] = 0x7000e940fcull; c->x[0] = x0; c->x[1] = x1; f_7000e8c250(c);',
+        'f_7000e8c250 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (40f8)'),
+    'bz_940fc':                          _offmap_store_guard(
+        0xf900b260, 'c->x[19]', 'c->x[19] + 0x160ull', 'ST64', 'x0',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (40fc)'),
+    'bz_94108':                          _offmap_load_guard(
+        0xf9407108, 'x8', 'x8', 'x8 + 0xe0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (4108)'),
+    'bz_9410c':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (410c)'),
+    'bz_94110':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e94114ull; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (4110)'),
+    'bz_94118':                          _offmap_load_guard(
+        0xf940b260, 'c->x[19]', 'x0', 'c->x[19] + 0x160ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (4118)'),
+    'bz_9411c':                          _offmap_load_guard(
+        0xf9407d08, 'x8', 'x8', 'x8 + 0xf8ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (411c)'),
+    'bz_94120':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (4120)'),
+    'bz_94124':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e94128ull; c->x[0] = x0; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (4124)'),
+    'bz_94128':                          _offmap_store_guard(
+        0xf900b660, 'c->x[19]', 'c->x[19] + 0x168ull', 'ST64', 'x0',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (4128)'),
+    'bz_94138':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e8c250(Cpu *c); c->x[30] = 0x7000e9413cull; c->x[0] = x0; c->x[1] = x1; f_7000e8c250(c);',
+        'f_7000e8c250 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (4138)'),
+    'bz_9413c':                          _offmap_store_guard(
+        0xf900e260, 'c->x[19]', 'c->x[19] + 0x1c0ull', 'ST64', 'x0',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (413c)'),
+    'bz_94148':                          _offmap_load_guard(
+        0xf9462108, 'x8', 'x8', 'x8 + 0xc40ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (4148)'),
+    'bz_9414c':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (414c)'),
+    'bz_94150':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e94154ull; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (4150)'),
+    'bz_94154':                          _offmap_load_guard(
+        0x3942f268, 'c->x[19]', 'x8', 'c->x[19] + 0xbcull', 'LD8',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (4154)'),
+    'bz_9415c':                          _offmap_u128_load_guard(
+        0x29568e62, 'c->x[19]', 'c->x[2]', 'c->x[3]', 'c->x[19] + 180',
+        'uint64_t a = LD32(ea), b = LD32(ea + 4); c->x[2] = (uint64_t)(a); c->x[3] = (uint64_t)(b);',
+        'f_7000e93960 answered-0 manager-method ldp pair load via c->x[19] skipped off-map (415c)'),
+    'bz_94168':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e9a6b8(Cpu *c); c->x[30] = 0x7000e9416cull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; f_7000e9a6b8(c);',
+        'f_7000e9a6b8 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (4168)'),
+    'bz_9416c':                          _offmap_store_guard(
+        0xf9008260, 'c->x[19]', 'c->x[19] + 0x100ull', 'ST64', 'x0',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (416c)'),
+    'bz_9417c':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e8c250(Cpu *c); c->x[30] = 0x7000e94180ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; f_7000e8c250(c);',
+        'f_7000e8c250 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (417c)'),
+    'bz_94188':                          _offmap_load_guard(
+        0xf9413108, 'x8', 'x8', 'x8 + 0x260ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (4188)'),
+    'bz_941a8':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e8c250(Cpu *c); c->x[30] = 0x7000e941acull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; f_7000e8c250(c);',
+        'f_7000e8c250 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (41a8)'),
+    'bz_941b8':                          _offmap_pair_store_guard(
+        0xa9017c08, 'x0', 'x0 + 16', 'x8', '0ull',
+        'f_7000e93960 answered-0 manager-method pair store via x0 skipped off-map (41b8)'),
+    'bz_941c4':                          _offmap_pair_store_guard(
+        0xa9004c08, 'x0', 'x0 + 0', 'x8', 'c->x[19]',
+        'f_7000e93960 answered-0 manager-method pair store via x0 skipped off-map (41c4)'),
+    'bz_941c8':                          _offmap_load_guard(
+        0xb940ea60, 'c->x[19]', 'x0', 'c->x[19] + 0xe8ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (41c8)'),
+    'bz_941cc':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000eb0ae0(Cpu *c); c->x[30] = 0x7000e941d0ull; c->x[0] = x0; c->x[8] = x8; f_7000eb0ae0(c);',
+        'f_7000eb0ae0 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (41cc)'),
+    'bz_941f4':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000eb06f0(Cpu *c); c->x[30] = 0x7000e941f8ull; c->x[0] = x0; c->x[1] = x1; f_7000eb06f0(c);',
+        'f_7000eb06f0 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (41f4)'),
+    'bz_941fc':                          _offmap_store_guard(
+        0xf900de75, 'c->x[19]', 'c->x[19] + 0x1b8ull', 'ST64', 'c->x[21]',
+        'f_7000e93960 answered-0 manager-method store via c->x[19] skipped off-map (41fc)'),
+    'bz_94218':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000eb0218(Cpu *c); c->x[30] = 0x7000e9421cull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; f_7000eb0218(c);',
+        'f_7000eb0218 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (4218)'),
+    'bz_9421c':                          _offmap_load_guard(
+        0xf940de60, 'c->x[19]', 'x0', 'c->x[19] + 0x1b8ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (421c)'),
+    'bz_94220':                          _offmap_load_guard(
+        0xf9400008, 'x0', 'x8', 'x0 + 0x0ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x0 skipped off-map (4220)'),
+    'bz_94224':                          _offmap_load_guard(
+        0xf9401908, 'x8', 'x8', 'x8 + 0x30ull', 'LD64',
+        'f_7000e93960 answered-0 manager-method load via x8 skipped off-map (4224)'),
+    'bz_94228':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e9422cull; c->x[0] = x0; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (4228)'),
+    'bz_94254':                          _always_call(
+        'x0',
+        'extern void f_700159feb0(Cpu *c); c->x[30] = 0x7000e94258ull; c->x[0] = x0; c->x[8] = x8; f_700159feb0(c);',
+        'lock/TLS thunk f_700159feb0 kept ALWAYS-CALL per the #49 rule -- the dead x0 is a legitimate value, the guarded lift answers it 0, and the thunk side effect is exactly what the registry needs (4254)'),
+    'bz_9425c':                          _offmap_load_guard(
+        0xb940c268, 'c->x[19]', 'x8', 'c->x[19] + 0xc0ull', 'LD32',
+        'f_7000e93960 answered-0 manager-method load via c->x[19] skipped off-map (425c)'),
+    'bz_94274':                          _offmap_store_guard(
+        0xf9060b28, 'c->x[25]', 'c->x[25] + 0xc10ull', 'ST64', 'x8',
+        'f_7000e93960 answered-0 manager-method store via c->x[25] skipped off-map (4274)'),
+    'bz_94278':                          _always_call(
+        'x0',
+        'extern void f_700159fec0(Cpu *c); c->x[30] = 0x7000e9427cull; c->x[0] = x0; c->x[8] = x8; f_700159fec0(c);',
+        'lock/TLS thunk f_700159fec0 kept ALWAYS-CALL per the #49 rule -- same legitimacy, and its guarded lift answers the dead x0 0 (4278)'),
 }
 
 

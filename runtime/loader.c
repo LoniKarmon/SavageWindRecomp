@@ -226,6 +226,27 @@ static void relocate(Module *m) {
         (unsigned long long)packed, unresolved);
 }
 
+// Boot-state seeds the guest fills with constructors (SAVAGEWIND_SEED=addr:value,...): a list head left 0 in our
+// .bss copy strands every later reader in the answered-0 walk -- the heads whose ONLY guest writer sits behind the
+// builder that reads them, so no guard can conjure them (the param manager's [0x7001e33ff0] singleton, its list
+// sentinel [0x7001e346d0], and the registry array's head field are exactly those). Values pass the same off-map
+// tests as any real pointer, and on a built Switch these slots hold pointers anyway: the seed changes nothing there.
+void loader_env_seed(void) {
+    const char *e = getenv("SAVAGEWIND_SEED");
+    for (; e && *e;) {
+        char *end;
+        uint64_t addr = strtoull(e, &end, 16), value;
+        e = *end == ':' ? end + 1 : end;
+        if (e == end || !*e) break;
+        value = strtoull(e, &end, 16);
+        if (addr >= GUEST_LO && addr + 8 <= GUEST_HI) {
+            *(uint64_t *)(uintptr_t)addr = value;
+            LOG("[seed] %llx = %llx\n", (unsigned long long)addr, (unsigned long long)value);
+        } else FATAL("seed address %llx outside the guest\n", (unsigned long long)addr);
+        e = *end == ',' ? end + 1 : end;
+    }
+}
+
 // The modules the game code was generated for, in its layout's order (tools/layout.py: main, subsdk0..9, sdk).
 void loader_load(const char *exefs) {
     char path[1024];

@@ -5097,6 +5097,420 @@ PATCHES = {
     'bw_05d74':                          _offmap_load_guard(
         0xf9400d8c, 'c->x[12]', 'c->x[12]', 'c->x[12] + 0x18ull', 'LD64',
         'f_7000005874 answered-0 node-init load via c->x[12] skipped off-map (5d74)'),
+    'bx_05d9c':                          _offmap_store_guard(
+        0xb900301f, 'x0', 'x0 + 0x30ull', 'ST32', '0u',
+        'f_7000005d80 answered-0 node-init store via x0 skipped off-map (5d9c)'),
+    'bx_05da4':                          _offmap_pair_store_guard(
+        0xa9025816, 'x0', 'x0 + 32', 'c->x[22]', 'c->x[22]',
+        'f_7000005d80 answered-0 node-init pair store via x0 skipped off-map (5da4)'),
+    'bx_05dac':                          _offmap_pair_store_guard(
+        0xa903fc1f, 'x0', 'x0 + 56', '0ull', '0ull',
+        'f_7000005d80 answered-0 node-init pair store via x0 skipped off-map (5dac)'),
+    'bx_05db0':                          _offmap_load_guard(
+        0xf9421ab5, 'c->x[21]', 'c->x[21]', 'c->x[21] + 0x430ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[21] skipped off-map (5db0)'),
+    'bx_05db4':                          _offmap_store_guard(
+        0xf900241f, 'x0', 'x0 + 0x48ull', 'ST64', '0ull',
+        'f_7000005d80 answered-0 node-init store via x0 skipped off-map (5db4)'),
+    'bx_05db8':                          _offmap_load_guard(
+        0xf94002a0, 'c->x[21]', 'x0', 'c->x[21] + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[21] skipped off-map (5db8)'),
+    'bx_05dbc':                          _offmap_store_guard(
+        0x7900a27f, 'c->x[19]', 'c->x[19] + 0x50ull', 'ST16', '0u',
+        'f_7000005d80 answered-0 node-init store via c->x[19] skipped off-map (5dbc)'),
+    'bx_05dc8':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000006ef0(Cpu *c); c->x[30] = 0x7000005dccull; c->x[0] = x0; c->sp = sp_; f_7000006ef0(c);',
+        'f_7000006ef0 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (5dc8)'),
+    'bx_05dd8':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a07c0(Cpu *c); c->x[30] = 0x7000005ddcull; c->x[0] = x0; f_70015a07c0(c);',
+        'f_70015a07c0 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (5dd8)'),
+    'bx_05de8':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000007c20(Cpu *c); c->x[30] = 0x7000005decull; c->x[0] = x0; f_7000007c20(c);',
+        'f_7000007c20 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (5de8)'),
+    'bx_05df4':                          _offmap_store_guard(
+        0xf9002660, 'c->x[19]', 'c->x[19] + 0x48ull', 'ST64', 'x0',
+        'f_7000005d80 answered-0 node-init store via c->x[19] skipped off-map (5df4)'),
+    'bx_05e00':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a07d0(Cpu *c); c->x[30] = 0x7000005e04ull; c->x[0] = x0; f_70015a07d0(c);',
+        'f_70015a07d0 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (5e00)'),
+    'bx_05e04':                          _offmap_load_guard(
+        0xf94002a8, 'c->x[21]', 'x8', 'c->x[21] + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[21] skipped off-map (5e04)'),
+    'bx_05e14':                          _offmap_load_guard(
+        0xf9400008, 'x0', 'x8', 'x0 + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (5e14)'),
+    'bx_05e1c':                          _offmap_load_guard(
+        0xf9401908, 'x8', 'x8', 'x8 + 0x30ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x8 skipped off-map (5e1c)'),
+    'bx_05e20':                          _offmap_load_guard(
+        0xf9447d29, 'x9', 'x9', 'x9 + 0x8f8ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x9 skipped off-map (5e20)'),
+    'bx_05e2c':                          _offmap_load_guard(
+        0xf94002ae, 'c->x[21]', 'c->x[14]', 'c->x[21] + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[21] skipped off-map (5e2c)'),
+    'bx_05e30':                          _offmap_load_guard(
+        0x7941b008, 'x0', 'x8', 'x0 + 0xd8ull', 'LD16',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (5e30)'),
+    'bx_05e3c':                          _offmap_load_guard(
+        0xb9409008, 'x0', 'x8', 'x0 + 0x90ull', 'LD32',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (5e3c)'),
+    'bx_05e50':                          _offmap_load_guard(
+        0xf940740c, 'x0', 'x12', 'x0 + 0xe8ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (5e50)'),
+    'bx_05e60':                          _offmap_load_guard(
+        0xb980f408, 'x0', 'x8', 'x0 + 0xf4ull', '(uint64_t)(int64_t)(int32_t)LD32',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (5e60)'),
+    'bx_05e68':                          _offmap_load_guard(
+        0x3943700d, 'x0', 'c->x[13]', 'x0 + 0xdcull', 'LD8',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (5e68)'),
+    'bx_05e78':                          _offmap_load_guard(
+        0xf9400d8d, 'x12', 'c->x[13]', 'x12 + 0x18ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x12 skipped off-map (5e78)'),
+    'bx_05e88':                          _offmap_load_guard(
+        0x7940258b, 'x12', 'c->x[11]', 'x12 + 0x12ull', 'LD16',
+        'f_7000005d80 answered-0 node-init load via x12 skipped off-map (5e88)'),
+    'bx_05e8c':                          _offmap_store_guard(
+        0xf9000d88, 'x12', 'x12 + 0x18ull', 'ST64', 'x8',
+        'f_7000005d80 answered-0 node-init store via x12 skipped off-map (5e8c)'),
+    'bx_05e90':                          _offmap_load_guard(
+        0xb980f40a, 'x0', 'x10', 'x0 + 0xf4ull', '(uint64_t)(int64_t)(int32_t)LD32',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (5e90)'),
+    'bx_05e98':                          _offmap_ldp_load_guard(
+        0xa940390f, 'x8', 'c->x[15]', 'c->x[14]',
+        'x8 + 0',
+        'f_7000005d80 answered-0 node-init ldp pair load via x8 skipped off-map (5e98)'),
+    'bx_05eac':                          _offmap_store_guard(
+        0xf90005ee, 'c->x[15]', 'c->x[15] + 0x8ull', 'ST64', 'c->x[14]',
+        'f_7000005d80 answered-0 node-init store via c->x[15] skipped off-map (5eac)'),
+    'bx_05eb0':                          _offmap_load_guard(
+        0xf940050e, 'x8', 'c->x[14]', 'x8 + 0x8ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x8 skipped off-map (5eb0)'),
+    'bx_05eb8':                          _offmap_load_guard(
+        0xf940010f, 'x8', 'c->x[15]', 'x8 + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x8 skipped off-map (5eb8)'),
+    'bx_05ebc':                          _offmap_store_guard(
+        0xf90001cf, 'c->x[14]', 'c->x[14] + 0x0ull', 'ST64', 'c->x[15]',
+        'f_7000005d80 answered-0 node-init store via c->x[14] skipped off-map (5ebc)'),
+    'bx_05ec0':                          _offmap_pair_store_guard(
+        0xa9007d1f, 'x8', 'x8 + 0', '0ull', '0ull',
+        'f_7000005d80 answered-0 node-init pair store via x8 skipped off-map (5ec0)'),
+    'bx_05ec8':                          _offmap_load_guard(
+        0xb940f00e, 'x0', 'c->x[14]', 'x0 + 0xf0ull', 'LD32',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (5ec8)'),
+    'bx_05ecc':                          _offmap_load_guard(
+        0xb940900f, 'x0', 'c->x[15]', 'x0 + 0x90ull', 'LD32',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (5ecc)'),
+    'bx_05ed8':                          _offmap_store_guard(
+        0xb900f00e, 'x0', 'x0 + 0xf0ull', 'ST32', '(uint32_t)c->x[14]',
+        'f_7000005d80 answered-0 node-init store via x0 skipped off-map (5ed8)'),
+    'bx_05edc':                          _offmap_load_guard(
+        0xb9810c0e, 'x0', 'c->x[14]', 'x0 + 0x10cull', '(uint64_t)(int64_t)(int32_t)LD32',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (5edc)'),
+    'bx_05ee8':                          _offmap_load_guard(
+        0xf940010e, 'x8', 'c->x[14]', 'x8 + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x8 skipped off-map (5ee8)'),
+    'bx_05eec':                          _offmap_store_guard(
+        0xf9000101, 'x8', 'x8 + 0x0ull', 'ST64', 'c->x[1]',
+        'f_7000005d80 answered-0 node-init store via x8 skipped off-map (5eec)'),
+    'bx_05ef0':                          _offmap_pair_store_guard(
+        0xa900202e, 'c->x[1]', 'c->x[1] + 0', 'c->x[14]', 'x8',
+        'f_7000005d80 answered-0 node-init pair store via c->x[1] skipped off-map (5ef0)'),
+    'bx_05ef8':                          _offmap_store_guard(
+        0xf90005c1, 'c->x[14]', 'c->x[14] + 0x8ull', 'ST64', 'c->x[1]',
+        'f_7000005d80 answered-0 node-init store via c->x[14] skipped off-map (5ef8)'),
+    'bx_05efc':                          _offmap_load_guard(
+        0xb9410808, 'x0', 'x8', 'x0 + 0x108ull', 'LD32',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (5efc)'),
+    'bx_05f04':                          _offmap_store_guard(
+        0xb9010808, 'x0', 'x0 + 0x108ull', 'ST32', '(uint32_t)x8',
+        'f_7000005d80 answered-0 node-init store via x0 skipped off-map (5f04)'),
+    'bx_05f1c':                          _offmap_pre_store_guard(
+        0xf80a8d1f, 'x8', '168',
+        'f_7000005d80 answered-0 node-init pre-index store via x8 skipped off-map (5f1c)'),
+    'bx_05f20':                          _offmap_store_guard(
+        0xf9000d0b, 'x8', 'x8 + 0x18ull', 'ST64', 'c->x[11]',
+        'f_7000005d80 answered-0 node-init store via x8 skipped off-map (5f20)'),
+    'bx_05f28':                          _offmap_store_guard(
+        0xb900111f, 'x8', 'x8 + 0x10ull', 'ST32', '0u',
+        'f_7000005d80 answered-0 node-init store via x8 skipped off-map (5f28)'),
+    'bx_05f2c':                          _offmap_store_guard(
+        0xf900051f, 'x8', 'x8 + 0x8ull', 'ST64', '0ull',
+        'f_7000005d80 answered-0 node-init store via x8 skipped off-map (5f2c)'),
+    'bx_05f30':                          _offmap_store_guard(
+        0x7900210b, 'x8', 'x8 + 0x10ull', 'ST16', '(uint32_t)c->x[11]',
+        'f_7000005d80 answered-0 node-init store via x8 skipped off-map (5f30)'),
+    'bx_05f34':                          _offmap_load_guard(
+        0xb980f40b, 'x0', 'c->x[11]', 'x0 + 0xf4ull', '(uint64_t)(int64_t)(int32_t)LD32',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (5f34)'),
+    'bx_05f3c':                          _offmap_load_guard(
+        0xf94002aa, 'c->x[21]', 'x10', 'c->x[21] + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[21] skipped off-map (5f3c)'),
+    'bx_05f44':                          _offmap_store_guard(
+        0xf90002a8, 'c->x[21]', 'c->x[21] + 0x0ull', 'ST64', 'x8',
+        'f_7000005d80 answered-0 node-init store via c->x[21] skipped off-map (5f44)'),
+    'bx_05f48':                          _offmap_pair_store_guard(
+        0xa900550a, 'x8', 'x8 + 0', 'x10', 'c->x[21]',
+        'f_7000005d80 answered-0 node-init pair store via x8 skipped off-map (5f48)'),
+    'bx_05f50':                          _offmap_store_guard(
+        0xf9000548, 'x10', 'x10 + 0x8ull', 'ST64', 'x8',
+        'f_7000005d80 answered-0 node-init store via x10 skipped off-map (5f50)'),
+    'bx_05f54':                          _offmap_load_guard(
+        0xb940f008, 'x0', 'x8', 'x0 + 0xf0ull', 'LD32',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (5f54)'),
+    'bx_05f5c':                          _offmap_store_guard(
+        0xb900f008, 'x0', 'x0 + 0xf0ull', 'ST32', '(uint32_t)x8',
+        'f_7000005d80 answered-0 node-init store via x0 skipped off-map (5f5c)'),
+    'bx_05f60':                          _offmap_load_guard(
+        0x7941b408, 'x0', 'x8', 'x0 + 0xdaull', 'LD16',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (5f60)'),
+    'bx_05f64':                          _offmap_store_guard(
+        0x79002188, 'x12', 'x12 + 0x10ull', 'ST16', '(uint32_t)x8',
+        'f_7000005d80 answered-0 node-init store via x12 skipped off-map (5f64)'),
+    'bx_05f68':                          _offmap_load_guard(
+        0x79402588, 'x12', 'x8', 'x12 + 0x12ull', 'LD16',
+        'f_7000005d80 answered-0 node-init load via x12 skipped off-map (5f68)'),
+    'bx_05f80':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70000075f4(Cpu *c); c->x[30] = 0x7000005f84ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[12] = x12; f_70000075f4(c);',
+        'f_70000075f4 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (5f80)'),
+    'bx_05f8c':                          _offmap_load_guard(
+        0xf9422e94, 'c->x[20]', 'c->x[20]', 'c->x[20] + 0x458ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[20] skipped off-map (5f8c)'),
+    'bx_05f90':                          _offmap_store_guard(
+        0xf9002275, 'c->x[19]', 'c->x[19] + 0x40ull', 'ST64', 'c->x[21]',
+        'f_7000005d80 answered-0 node-init store via c->x[19] skipped off-map (5f90)'),
+    'bx_05f94':                          _offmap_load_guard(
+        0xf9400288, 'c->x[20]', 'x8', 'c->x[20] + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[20] skipped off-map (5f94)'),
+    'bx_05f98':                          _offmap_load_guard(
+        0xf9400d08, 'x8', 'x8', 'x8 + 0x18ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x8 skipped off-map (5f98)'),
+    'bx_05f9c':                          _offmap_load_guard(
+        0xf9412929, 'x9', 'x9', 'x9 + 0x250ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x9 skipped off-map (5f9c)'),
+    'bx_05fa8':                          _offmap_load_guard(
+        0xf9401ea9, 'c->x[21]', 'x9', 'c->x[21] + 0x38ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[21] skipped off-map (5fa8)'),
+    'bx_05fb4':                          _offmap_store_guard(
+        0xf9001eb6, 'c->x[21]', 'c->x[21] + 0x38ull', 'ST64', 'c->x[22]',
+        'f_7000005d80 answered-0 node-init store via c->x[21] skipped off-map (5fb4)'),
+    'bx_05fb8':                          _offmap_load_guard(
+        0xf94002c9, 'c->x[22]', 'x9', 'c->x[22] + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[22] skipped off-map (5fb8)'),
+    'bx_05fbc':                          _offmap_store_guard(
+        0xf90002c8, 'c->x[22]', 'c->x[22] + 0x0ull', 'ST64', 'x8',
+        'f_7000005d80 answered-0 node-init store via c->x[22] skipped off-map (5fbc)'),
+    'bx_05fc0':                          _offmap_pair_store_guard(
+        0xa9025aa9, 'c->x[21]', 'c->x[21] + 32', 'x9', 'c->x[22]',
+        'f_7000005d80 answered-0 node-init pair store via c->x[21] skipped off-map (5fc0)'),
+    'bx_05fc8':                          _offmap_store_guard(
+        0xf9000528, 'x9', 'x9 + 0x8ull', 'ST64', 'x8',
+        'f_7000005d80 answered-0 node-init store via x9 skipped off-map (5fc8)'),
+    'bx_05fcc':                          _offmap_load_guard(
+        0xb9403268, 'c->x[19]', 'x8', 'c->x[19] + 0x30ull', 'LD32',
+        'f_7000005d80 answered-0 node-init load via c->x[19] skipped off-map (5fcc)'),
+    'bx_05fd4':                          _offmap_store_guard(
+        0xb9003268, 'c->x[19]', 'c->x[19] + 0x30ull', 'ST32', '(uint32_t)x8',
+        'f_7000005d80 answered-0 node-init store via c->x[19] skipped off-map (5fd4)'),
+    'bx_05fd8':                          _offmap_load_guard(
+        0xf9402268, 'c->x[19]', 'x8', 'c->x[19] + 0x40ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[19] skipped off-map (5fd8)'),
+    'bx_05fdc':                          _offmap_store_guard(
+        0xf9001e68, 'c->x[19]', 'c->x[19] + 0x38ull', 'ST64', 'x8',
+        'f_7000005d80 answered-0 node-init store via c->x[19] skipped off-map (5fdc)'),
+    'bx_05ffc':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000002140(Cpu *c); c->x[30] = 0x7000006000ull; c->x[0] = x0; c->x[8] = x8; f_7000002140(c);',
+        'f_7000002140 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (5ffc)'),
+    'bx_06008':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x700000600cull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (6008)'),
+    'bx_06010':                          _offmap_load_guard(
+        0xf9412908, 'x8', 'x8', 'x8 + 0x250ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x8 skipped off-map (6010)'),
+    'bx_06014':                          _offmap_load_guard(
+        0xf9400289, 'c->x[20]', 'x9', 'c->x[20] + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[20] skipped off-map (6014)'),
+    'bx_06018':                          _offmap_load_guard(
+        0xf9400d29, 'x9', 'x9', 'x9 + 0x18ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x9 skipped off-map (6018)'),
+    'bx_0602c':                          _offmap_blr_guard(
+        'c->pc = x9; c->x[30] = 0x7000006030ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x9 is off-map or unmapped (602c)', cond='x9', w=0xd63f0120),
+    'bx_06030':                          _offmap_load_guard(
+        0xf9400288, 'c->x[20]', 'x8', 'c->x[20] + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[20] skipped off-map (6030)'),
+    'bx_06034':                          _offmap_load_guard(
+        0xf9400d08, 'x8', 'x8', 'x8 + 0x18ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x8 skipped off-map (6034)'),
+    'bx_06040':                          _offmap_load_guard(
+        0xf9400697, 'c->x[20]', 'c->x[23]', 'c->x[20] + 0x8ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[20] skipped off-map (6040)'),
+    'bx_06048':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x700000604cull; c->x[0] = x0; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (6048)'),
+    'bx_0604c':                          _offmap_load_guard(
+        0xf9400689, 'c->x[20]', 'x9', 'c->x[20] + 0x8ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[20] skipped off-map (604c)'),
+    'bx_06058':                          _offmap_load_guard(
+        0x39400128, 'x9', 'x8', 'x9 + 0x0ull', 'LD8',
+        'f_7000005d80 answered-0 node-init load via x9 skipped off-map (6058)'),
+    'bx_06070':                          _offmap_load_guard(
+        0x3868692a, 'x9', 'x10', 'x9 + x8', 'LD8',
+        'f_7000005d80 answered-0 node-init load via x9 skipped off-map (6070)'),
+    'bx_06080':                          _offmap_load_guard(
+        0xf94012aa, 'c->x[21]', 'x10', 'c->x[21] + 0x20ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[21] skipped off-map (6080)'),
+    'bx_06084':                          _offmap_store_guard(
+        0xf9001ebf, 'c->x[21]', 'c->x[21] + 0x38ull', 'ST64', '0ull',
+        'f_7000005d80 answered-0 node-init store via c->x[21] skipped off-map (6084)'),
+    'bx_0608c':                          _offmap_load_guard(
+        0xf94016ab, 'c->x[21]', 'c->x[11]', 'c->x[21] + 0x28ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[21] skipped off-map (608c)'),
+    'bx_06090':                          _offmap_store_guard(
+        0xf900054b, 'x10', 'x10 + 0x8ull', 'ST64', 'c->x[11]',
+        'f_7000005d80 answered-0 node-init store via x10 skipped off-map (6090)'),
+    'bx_06094':                          _offmap_load_guard(
+        0xf94016aa, 'c->x[21]', 'x10', 'c->x[21] + 0x28ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[21] skipped off-map (6094)'),
+    'bx_0609c':                          _offmap_load_guard(
+        0xf940010b, 'x8', 'c->x[11]', 'x8 + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x8 skipped off-map (609c)'),
+    'bx_060a0':                          _offmap_store_guard(
+        0xf900014b, 'x10', 'x10 + 0x0ull', 'ST64', 'c->x[11]',
+        'f_7000005d80 answered-0 node-init store via x10 skipped off-map (60a0)'),
+    'bx_060a4':                          _offmap_pair_store_guard(
+        0xa9007d1f, 'x8', 'x8 + 0', '0ull', '0ull',
+        'f_7000005d80 answered-0 node-init pair store via x8 skipped off-map (60a4)'),
+    'bx_060a8':                          _offmap_load_guard(
+        0xb940112a, 'x9', 'x10', 'x9 + 0x10ull', 'LD32',
+        'f_7000005d80 answered-0 node-init load via x9 skipped off-map (60a8)'),
+    'bx_060b0':                          _offmap_store_guard(
+        0xb900112a, 'x9', 'x9 + 0x10ull', 'ST32', '(uint32_t)x10',
+        'f_7000005d80 answered-0 node-init store via x9 skipped off-map (60b0)'),
+    'bx_060bc':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000ea3c44(Cpu *c); c->x[30] = 0x70000060c0ull; c->x[0] = x0; c->x[8] = x8; f_7000ea3c44(c);',
+        'f_7000ea3c44 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (60bc)'),
+    'bx_060cc':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x70000060d0ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (60cc)'),
+    'bx_060ec':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0520(Cpu *c); c->x[30] = 0x70000060f0ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; f_70015a0520(c);',
+        'f_70015a0520 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (60ec)'),
+    'bx_06110':                          _offmap_store_guard(
+        0xf9000fa9, 'c->x[29]', 'c->x[29] + 0x18ull', 'ST64', 'x9',
+        'f_7000005d80 answered-0 node-init store via c->x[29] skipped off-map (6110)'),
+    'bx_06124':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000ea064c(Cpu *c); c->x[30] = 0x7000006128ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; f_7000ea064c(c);',
+        'f_7000ea064c skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (6124)'),
+    'bx_06130':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0530(Cpu *c); c->x[30] = 0x7000006134ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[12] = x12; f_70015a0530(c);',
+        'f_70015a0530 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (6130)'),
+    'bx_06140':                          _offmap_store_guard(
+        0xf9000fa9, 'c->x[29]', 'c->x[29] + 0x18ull', 'ST64', 'x9',
+        'f_7000005d80 answered-0 node-init store via c->x[29] skipped off-map (6140)'),
+    'bx_0614c':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000ea04a0(Cpu *c); c->x[30] = 0x7000006150ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; f_7000ea04a0(c);',
+        'f_7000ea04a0 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (614c)'),
+    'bx_06160':                          _offmap_load_guard(
+        0xf9400fa9, 'c->x[29]', 'x9', 'c->x[29] + 0x18ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[29] skipped off-map (6160)'),
+    'bx_06170':                          _offmap_store_guard(
+        0xf9000fa9, 'c->x[29]', 'c->x[29] + 0x18ull', 'ST64', 'x9',
+        'f_7000005d80 answered-0 node-init store via c->x[29] skipped off-map (6170)'),
+    'bx_06184':                          _offmap_load_guard(
+        0xf9400d8d, 'x12', 'c->x[13]', 'x12 + 0x18ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x12 skipped off-map (6184)'),
+    'bx_06194':                          _offmap_load_guard(
+        0xf9400d2e, 'x9', 'c->x[14]', 'x9 + 0x18ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x9 skipped off-map (6194)'),
+    'bx_061a8':                          _offmap_load_guard(
+        0xf940058c, 'x12', 'x12', 'x12 + 0x8ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x12 skipped off-map (61a8)'),
+    'bx_061c0':                          _offmap_load_guard(
+        0xf940058c, 'x12', 'x12', 'x12 + 0x8ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x12 skipped off-map (61c0)'),
+    'bx_061d4':                          _offmap_store_guard(
+        0xf9000fa9, 'c->x[29]', 'c->x[29] + 0x18ull', 'ST64', 'x9',
+        'f_7000005d80 answered-0 node-init store via c->x[29] skipped off-map (61d4)'),
+    'bx_061ec':                          _offmap_load_guard(
+        0xf9400900, 'x8', 'x0', 'x8 + 0x10ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x8 skipped off-map (61ec)'),
+    'bx_06218':                          _offmap_load_guard(
+        0xf9400008, 'x0', 'x8', 'x0 + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x0 skipped off-map (6218)'),
+    'bx_0621c':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x8 skipped off-map (621c)'),
+    'bx_06220':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000006224ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[12] = x12; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (6220)'),
+    'bx_06224':                          _offmap_load_guard(
+        0xf9400fa9, 'c->x[29]', 'x9', 'c->x[29] + 0x18ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[29] skipped off-map (6224)'),
+    'bx_06238':                          _offmap_store_guard(
+        0xf9000fa9, 'c->x[29]', 'c->x[29] + 0x18ull', 'ST64', 'x9',
+        'f_7000005d80 answered-0 node-init store via c->x[29] skipped off-map (6238)'),
+    'bx_06244':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e8c944(Cpu *c); c->x[30] = 0x7000006248ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[12] = x12; f_7000e8c944(c);',
+        'f_7000e8c944 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (6244)'),
+    'bx_0624c':                          _offmap_load_guard(
+        0xf9400fa9, 'c->x[29]', 'x9', 'c->x[29] + 0x18ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[29] skipped off-map (624c)'),
+    'bx_06268':                          _offmap_store_guard(
+        0xf9000d8d, 'x12', 'x12 + 0x18ull', 'ST64', 'c->x[13]',
+        'f_7000005d80 answered-0 node-init store via x12 skipped off-map (6268)'),
+    'bx_06278':                          _offmap_load_guard(
+        0xf94001aa, 'c->x[13]', 'x10', 'c->x[13] + 0x0ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[13] skipped off-map (6278)'),
+    'bx_0627c':                          _offmap_store_guard(
+        0xf90001a8, 'c->x[13]', 'c->x[13] + 0x0ull', 'ST64', 'x8',
+        'f_7000005d80 answered-0 node-init store via c->x[13] skipped off-map (627c)'),
+    'bx_06280':                          _offmap_pair_store_guard(
+        0xa900350a, 'x8', 'x8 + 0', 'x10', 'c->x[13]',
+        'f_7000005d80 answered-0 node-init pair store via x8 skipped off-map (6280)'),
+    'bx_06294':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000ea0704(Cpu *c); c->x[30] = 0x7000006298ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; f_7000ea0704(c);',
+        'f_7000ea0704 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (6294)'),
+    'bx_062a8':                          _offmap_load_guard(
+        0xf9400d8d, 'x12', 'c->x[13]', 'x12 + 0x18ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x12 skipped off-map (62a8)'),
+    'bx_062b8':                          _offmap_load_guard(
+        0xf9400d2e, 'x9', 'c->x[14]', 'x9 + 0x18ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x9 skipped off-map (62b8)'),
+    'bx_062cc':                          _offmap_load_guard(
+        0xf940058c, 'x12', 'x12', 'x12 + 0x8ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x12 skipped off-map (62cc)'),
+    'bx_062e8':                          _offmap_load_guard(
+        0xf9400d8d, 'x12', 'c->x[13]', 'x12 + 0x18ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x12 skipped off-map (62e8)'),
+    'bx_062f4':                          _offmap_load_guard(
+        0xf940058c, 'x12', 'x12', 'x12 + 0x8ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x12 skipped off-map (62f4)'),
+    'bx_06314':                          _offmap_load_guard(
+        0xf9400d2d, 'x9', 'c->x[13]', 'x9 + 0x18ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via x9 skipped off-map (6314)'),
+    'bx_0631c':                          _offmap_load_guard(
+        0xf9400fa9, 'c->x[29]', 'x9', 'c->x[29] + 0x18ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[29] skipped off-map (631c)'),
+    'bx_0632c':                          _offmap_load_guard(
+        0xf9422c21, 'c->x[1]', 'c->x[1]', 'c->x[1] + 0x458ull', 'LD64',
+        'f_7000005d80 answered-0 node-init load via c->x[1] skipped off-map (632c)'),
+    'bx_06330':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000e92140(Cpu *c); c->x[30] = 0x7000006334ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; f_7000e92140(c);',
+        'f_7000e92140 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (6330)'),
 }
 
 

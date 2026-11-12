@@ -2302,17 +2302,23 @@ def _offmap_stp_guard(w, cond, ea, src, note):
     return guard
 
 
-def _offmap_call_skip_guard(cond, disp, note, answer='c->x[0] = 0ull'):
+def _offmap_call_skip_guard(cond, disp, note, answer='c->x[0] = 0ull', w=None):
     """Skip a thunk call whose pointer argument is off-map (family #49: run101's 0x70 -- the
     always-call flip exposed that the 0x70015a03xx..0x70015a0axx service thunks dispatch into
     GUARD-FREE sdk lifts (f_700264d8fc is a bare `str wzr, [x0]`), so a dead base like x21 = 0x38
     stores through dst = x21 + 0x38 and faults inside the stub. Those stubs (mutex/mem) do their
     work THROUGH the argument, so with a dead argument calling gains nothing: skip, like before
     the flip. The lock/TLS/registrar thunks (0x700159fexx, f_700000151c) keep _always_call --
-    their side effects are exactly what the registry needs and their lifts are guarded."""
+    their side effects are exactly what the registry needs and their lifts are guarded.
+    w= takes the exact word for a TAIL thunk jump (family #52: 0x7000000a44 is `b`, not `bl`,
+    and ends the block -- such a site's answer must carry `return` too, else the guard block
+    falls through into the block it branched over)."""
     def guard(gen, a):
-        assert _word(gen, a) & 0xFC000000 == 0x94000000, hex(_word(gen, a))  # bl #<target>
-        return ('{' + f' if ({cond} - 0x7000000000ull >= 0x320000000ull) {answer};'
+        if w is not None:
+            assert _word(gen, a) == w, hex(_word(gen, a))  # tail jump (b #<target>)
+        else:
+            assert _word(gen, a) & 0xFC000000 == 0x94000000, hex(_word(gen, a))  # bl #<target>
+        return ('{' + f' if ({cond} - 0x7000000000ull >= 0x320000000ull) {{ {answer}; }}'
                 f' else {{ {disp} }} }}'
                 f'  /* {a:#x}: {note} */')
     return guard
@@ -5511,6 +5517,363 @@ PATCHES = {
         'x0',
         'extern void f_7000e92140(Cpu *c); c->x[30] = 0x7000006334ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; f_7000e92140(c);',
         'f_7000e92140 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (6330)'),
+    'by_00908':                          _offmap_store_guard(
+        0xf9000008, 'x0', 'x0 + 0x0ull', 'ST64', 'x8',
+        'f_70000008e0 answered-0 registry-tail store via x0 skipped off-map (908)'),
+    'by_00910':                          _offmap_pair_store_guard(
+        0xa9017c1f, 'x0', 'x0 + 16', '0ull', '0ull',
+        'f_70000008e0 answered-0 registry-tail pair store via x0 skipped off-map (910)'),
+    'by_00918':                          _offmap_pre_store_guard(
+        0xf8008eff, 'c->x[23]', '8',
+        'f_70000008e0 answered-0 registry-tail pre-index store via c->x[23] skipped off-map (918)'),
+    'by_0091c':                          _offmap_load_guard(
+        0xf9421908, 'x8', 'x8', 'x8 + 0x430ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (91c)'),
+    'by_00920':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (920)'),
+    'by_00950':                          _offmap_load_guard(
+        0xf947c108, 'x8', 'x8', 'x8 + 0xf80ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (950)'),
+    'by_00954':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (954)'),
+    'by_0095c':                          _offmap_load_guard(
+        0xb9408900, 'x8', 'x0', 'x8 + 0x88ull', 'LD32',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (95c)'),
+    'by_00960':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_700159fee0(Cpu *c); c->x[30] = 0x7000000964ull; c->x[0] = x0; c->x[8] = x8; f_700159fee0(c);',
+        'f_700159fee0 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (960)'),
+    'by_00968':                          _offmap_load_guard(
+        0xf9405808, 'x0', 'x8', 'x0 + 0xb0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x0 skipped off-map (968)'),
+    'by_00984':                          _offmap_load_guard(
+        0xb9406289, 'x20', 'x9', 'x20 + 0x60ull', 'LD32',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (984)'),
+    'by_0098c':                          _offmap_load_guard(
+        0xf9400289, 'x20', 'x9', 'x20 + 0x0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (98c)'),
+    'by_00994':                          _offmap_load_guard(
+        0xf9404529, 'x9', 'x9', 'x9 + 0x88ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (994)'),
+    'by_00998':                          _offmap_load_guard(
+        0xf944754a, 'x10', 'x10', 'x10 + 0x8e8ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x10 skipped off-map (998)'),
+    'by_009a4':                          _offmap_load_guard(
+        0xb9409289, 'x20', 'x9', 'x20 + 0x90ull', 'LD32',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (9a4)'),
+    'by_009ac':                          _offmap_load_guard(
+        0xf9401e8b, 'x20', 'c->x[11]', 'x20 + 0x38ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (9ac)'),
+    'by_009b4':                          _offmap_load_guard(
+        0xf9402289, 'x20', 'x9', 'x20 + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (9b4)'),
+    'by_009e4':                          _offmap_store_guard(
+        0xf90002f5, 'c->x[23]', 'c->x[23] + 0x0ull', 'ST64', 'c->x[21]',
+        'f_70000008e0 answered-0 registry-tail store via c->x[23] skipped off-map (9e4)'),
+    'by_009e8':                          _offmap_load_guard(
+        0x7941b2a8, 'c->x[21]', 'x8', 'c->x[21] + 0xd8ull', 'LD16',
+        'f_70000008e0 answered-0 registry-tail load via c->x[21] skipped off-map (9e8)'),
+    'by_009f8':                          _offmap_pre_load_guard(
+        0xf8478d48, 'x10', '120', 'x8',
+        'f_70000008e0 answered-0 registry-tail pre-index load via x10 skipped off-map (9f8)'),
+    'by_009fc':                          _offmap_load_guard(
+        0xb9801549, 'x10', 'x9', 'x10 + 0x14ull', '(uint64_t)(int64_t)(int32_t)LD32',
+        'f_70000008e0 answered-0 registry-tail load via x10 skipped off-map (9fc)'),
+    'by_00a04':                          _offmap_store_guard(
+        0xf9000149, 'x10', 'x10 + 0x0ull', 'ST64', 'x9',
+        'f_70000008e0 answered-0 registry-tail store via x10 skipped off-map (a04)'),
+    'by_00a08':                          _offmap_pair_store_guard(
+        0xa9002928, 'x9', 'x9 + 0', 'x8', 'x10',
+        'f_70000008e0 answered-0 registry-tail pair store via x9 skipped off-map (a08)'),
+    'by_00a10':                          _offmap_store_guard(
+        0xf9000509, 'x8', 'x8 + 0x8ull', 'ST64', 'x9',
+        'f_70000008e0 answered-0 registry-tail store via x8 skipped off-map (a10)'),
+    'by_00a14':                          _offmap_load_guard(
+        0xb9408aa8, 'c->x[21]', 'x8', 'c->x[21] + 0x88ull', 'LD32',
+        'f_70000008e0 answered-0 registry-tail load via c->x[21] skipped off-map (a14)'),
+    'by_00a1c':                          _offmap_store_guard(
+        0xb9008aa8, 'c->x[21]', 'c->x[21] + 0x88ull', 'ST32', '(uint32_t)x8',
+        'f_70000008e0 answered-0 registry-tail store via c->x[21] skipped off-map (a1c)'),
+    'by_00a44':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0530(Cpu *c); c->nzcv = fnz_nz(&F); c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[20] = x20; c->x[21] = c->x[21]; __attribute__((musttail)) return f_70015a0530(c);',
+        'TAIL thunk jump b #0x70015a0530 after the epilogue on the answered-0 walk; the dead 0 answer must carry return -- the block it ends has no fall-through (the b skips the 0xa48 block), the guard block returning 0 is exactly where the guarded caller (bt_0aa9c spill, mc_04fa8 twin chain) expects the answered-0 (a44)',
+        answer='c->x[0] = 0ull; return', w=0x14567ebb),
+    'by_00a54':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0520(Cpu *c); c->x[30] = 0x7000000a58ull; c->x[0] = x0; c->x[8] = x8; f_70015a0520(c);',
+        'f_70015a0520 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (a54)'),
+    'by_00a60':                          _offmap_load_guard(
+        0xb9800128, 'x9', 'x8', 'x9 + 0x0ull', '(uint64_t)(int64_t)(int32_t)LD32',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (a60)'),
+    'by_00a68':                          _offmap_load_guard(
+        0xf9400534, 'x9', 'x20', 'x9 + 0x8ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (a68)'),
+    'by_00a78':                          _offmap_load_guard(
+        0xf9447718, 'c->x[24]', 'c->x[24]', 'c->x[24] + 0x8e8ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via c->x[24] skipped off-map (a78)'),
+    'by_00a7c':                          _offmap_load_guard(
+        0xf9400288, 'x20', 'x8', 'x20 + 0x0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (a7c)'),
+    'by_00a84':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (a84)'),
+    'by_00a88':                          _offmap_load_guard(
+        0xf9404508, 'x8', 'x8', 'x8 + 0x88ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (a88)'),
+    'by_00a98':                          _offmap_load_guard(
+        0xb9409109, 'x8', 'x9', 'x8 + 0x90ull', 'LD32',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (a98)'),
+    'by_00a9c':                          _offmap_load_guard(
+        0xf9401d08, 'x8', 'x8', 'x8 + 0x38ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (a9c)'),
+    'by_00ab0':                          _offmap_load_guard(
+        0xf940214a, 'x10', 'x10', 'x10 + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x10 skipped off-map (ab0)'),
+    'by_00ac8':                          _offmap_pre_load_guard(
+        0xb8864f3c, 'c->x[25]', '100', 'c->x[28]',
+        'f_70000008e0 answered-0 registry-tail pre-index load via c->x[25] skipped off-map (ac8)'),
+    'by_00af4':                          _offmap_load_guard(
+        0xf9400129, 'x9', 'x9', 'x9 + 0x0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (af4)'),
+    'by_00af8':                          _offmap_load_guard(
+        0xf9404529, 'x9', 'x9', 'x9 + 0x88ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (af8)'),
+    'by_00b08':                          _offmap_load_guard(
+        0xb940912a, 'x9', 'x10', 'x9 + 0x90ull', 'LD32',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (b08)'),
+    'by_00b0c':                          _offmap_load_guard(
+        0xf9401d29, 'x9', 'x9', 'x9 + 0x38ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (b0c)'),
+    'by_00b20':                          _offmap_load_guard(
+        0xf940216b, 'c->x[11]', 'c->x[11]', 'c->x[11] + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via c->x[11] skipped off-map (b20)'),
+    'by_00b3c':                          _offmap_load_guard(
+        0xf9400529, 'x9', 'x9', 'x9 + 0x8ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (b3c)'),
+    'by_00b68':                          _offmap_load_guard(
+        0xf9402108, 'x8', 'x8', 'x8 + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (b68)'),
+    'by_00b88':                          _offmap_pre_load_guard(
+        0xb8864f3c, 'c->x[25]', '100', 'c->x[28]',
+        'f_70000008e0 answered-0 registry-tail pre-index load via c->x[25] skipped off-map (b88)'),
+    'by_00bb0':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0530(Cpu *c); c->x[30] = 0x7000000bb4ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[20] = x20; c->x[21] = c->x[21]; f_70015a0530(c);',
+        'f_70015a0530 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (bb0)'),
+    'by_00bc4':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0520(Cpu *c); c->x[30] = 0x7000000bc8ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[20] = x20; c->x[21] = c->x[21]; f_70015a0520(c);',
+        'f_70015a0520 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (bc4)'),
+    'by_00bf4':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0520(Cpu *c); c->x[30] = 0x7000000bf8ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[20] = x20; c->x[21] = c->x[21]; f_70015a0520(c);',
+        'f_70015a0520 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (bf4)'),
+    'by_00bf8':                          _offmap_load_guard(
+        0xf9400315, 'c->x[24]', 'c->x[21]', 'c->x[24] + 0x0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via c->x[24] skipped off-map (bf8)'),
+    'by_00c1c':                          _offmap_load_guard(
+        0xb9800128, 'x9', 'x8', 'x9 + 0x0ull', '(uint64_t)(int64_t)(int32_t)LD32',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (c1c)'),
+    'by_00c24':                          _offmap_load_guard(
+        0xf9400535, 'x9', 'c->x[21]', 'x9 + 0x8ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (c24)'),
+    'by_00c34':                          _offmap_load_guard(
+        0xf94002b4, 'c->x[21]', 'x20', 'c->x[21] + 0x0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via c->x[21] skipped off-map (c34)'),
+    'by_00c38':                          _offmap_load_guard(
+        0xf9400289, 'x20', 'x9', 'x20 + 0x0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (c38)'),
+    'by_00c3c':                          _offmap_load_guard(
+        0xf9404529, 'x9', 'x9', 'x9 + 0x88ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (c3c)'),
+    'by_00c48':                          _offmap_load_guard(
+        0xb940928a, 'x20', 'x10', 'x20 + 0x90ull', 'LD32',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (c48)'),
+    'by_00c50':                          _offmap_load_guard(
+        0xf9401e89, 'x20', 'x9', 'x20 + 0x38ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (c50)'),
+    'by_00c58':                          _offmap_load_guard(
+        0xf940228b, 'x20', 'c->x[11]', 'x20 + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (c58)'),
+    'by_00c74':                          _offmap_pre_load_guard(
+        0xb8864f29, 'c->x[25]', '100', 'x9',
+        'f_70000008e0 answered-0 registry-tail pre-index load via c->x[25] skipped off-map (c74)'),
+    'by_00ca0':                          _offmap_load_guard(
+        0xf940028a, 'x20', 'x10', 'x20 + 0x0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (ca0)'),
+    'by_00ca4':                          _offmap_load_guard(
+        0xf940454a, 'x10', 'x10', 'x10 + 0x88ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x10 skipped off-map (ca4)'),
+    'by_00cb0':                          _offmap_load_guard(
+        0xb940928b, 'x20', 'c->x[11]', 'x20 + 0x90ull', 'LD32',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (cb0)'),
+    'by_00cb8':                          _offmap_load_guard(
+        0xf9401e8a, 'x20', 'x10', 'x20 + 0x38ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (cb8)'),
+    'by_00cc0':                          _offmap_load_guard(
+        0xf940228c, 'x20', 'c->x[12]', 'x20 + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (cc0)'),
+    'by_00ce0':                          _offmap_load_guard(
+        0xf940054a, 'x10', 'x10', 'x10 + 0x8ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x10 skipped off-map (ce0)'),
+    'by_00d08':                          _offmap_load_guard(
+        0xf9402289, 'x20', 'x9', 'x20 + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (d08)'),
+    'by_00d28':                          _offmap_pre_load_guard(
+        0xb8864f29, 'c->x[25]', '100', 'x9',
+        'f_70000008e0 answered-0 registry-tail pre-index load via c->x[25] skipped off-map (d28)'),
+    'by_00d48':                          _offmap_store_guard(
+        0xf9000314, 'c->x[24]', 'c->x[24] + 0x0ull', 'ST64', 'x20',
+        'f_70000008e0 answered-0 registry-tail store via c->x[24] skipped off-map (d48)'),
+    'by_00d58':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0530(Cpu *c); c->x[30] = 0x7000000d5cull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[20] = x20; c->x[21] = c->x[21]; f_70015a0530(c);',
+        'f_70015a0530 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (d58)'),
+    'by_00d5c':                          _offmap_store_guard(
+        0xf90002f5, 'c->x[23]', 'c->x[23] + 0x0ull', 'ST64', 'c->x[21]',
+        'f_70000008e0 answered-0 registry-tail store via c->x[23] skipped off-map (d5c)'),
+    'by_00d74':                          _offmap_blr_guard(
+        'c->pc = x9; c->x[30] = 0x7000000d78ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[20] = x20; c->x[21] = c->x[21]; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x9 is off-map or unmapped (d74)', cond='x9', w=0xd63f0120),
+    'by_00d84':                          _offmap_load_guard(
+        0xf9402289, 'x20', 'x9', 'x20 + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (d84)'),
+    'by_00da8':                          _offmap_blr_guard(
+        'c->pc = x10; c->x[30] = 0x7000000dacull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[20] = x20; c->x[21] = c->x[21]; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x10 is off-map or unmapped (da8)', cond='x10', w=0xd63f0140),
+    'by_00db8':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (db8)'),
+    'by_00dbc':                          _offmap_load_guard(
+        0xf9404508, 'x8', 'x8', 'x8 + 0x88ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (dbc)'),
+    'by_00dc0':                          _offmap_load_guard(
+        0xf9447529, 'x9', 'x9', 'x9 + 0x8e8ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (dc0)'),
+    'by_00dd4':                          _offmap_load_guard(
+        0xb940928b, 'x20', 'c->x[11]', 'x20 + 0x90ull', 'LD32',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (dd4)'),
+    'by_00dd8':                          _offmap_load_guard(
+        0xf9401e8a, 'x20', 'x10', 'x20 + 0x38ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (dd8)'),
+    'by_00ddc':                          _offmap_load_guard(
+        0xf9447508, 'x8', 'x8', 'x8 + 0x8e8ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (ddc)'),
+    'by_00de8':                          _offmap_load_guard(
+        0xf940228c, 'x20', 'c->x[12]', 'x20 + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (de8)'),
+    'by_00e00':                          _offmap_load_guard(
+        0xb9400329, 'c->x[25]', 'x9', 'c->x[25] + 0x0ull', 'LD32',
+        'f_70000008e0 answered-0 registry-tail load via c->x[25] skipped off-map (e00)'),
+    'by_00e04':                          _offmap_load_guard(
+        0xf9447508, 'x8', 'x8', 'x8 + 0x8e8ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (e04)'),
+    'by_00e1c':                          _offmap_load_guard(
+        0xb94062a8, 'c->x[21]', 'x8', 'c->x[21] + 0x60ull', 'LD32',
+        'f_70000008e0 answered-0 registry-tail load via c->x[21] skipped off-map (e1c)'),
+    'by_00e24':                          _offmap_load_guard(
+        0xf94002a8, 'c->x[21]', 'x8', 'c->x[21] + 0x0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via c->x[21] skipped off-map (e24)'),
+    'by_00e2c':                          _offmap_load_guard(
+        0xf9404508, 'x8', 'x8', 'x8 + 0x88ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (e2c)'),
+    'by_00e30':                          _offmap_load_guard(
+        0xf9447529, 'x9', 'x9', 'x9 + 0x8e8ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (e30)'),
+    'by_00e3c':                          _offmap_load_guard(
+        0xb94092a9, 'c->x[21]', 'x9', 'c->x[21] + 0x90ull', 'LD32',
+        'f_70000008e0 answered-0 registry-tail load via c->x[21] skipped off-map (e3c)'),
+    'by_00e48':                          _offmap_load_guard(
+        0xf9401eaa, 'c->x[21]', 'x10', 'c->x[21] + 0x38ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via c->x[21] skipped off-map (e48)'),
+    'by_00e50':                          _offmap_load_guard(
+        0xf94022a8, 'c->x[21]', 'x8', 'c->x[21] + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via c->x[21] skipped off-map (e50)'),
+    'by_00e70':                          _offmap_store_guard(
+        0xf9000315, 'c->x[24]', 'c->x[24] + 0x0ull', 'ST64', 'c->x[21]',
+        'f_70000008e0 answered-0 registry-tail store via c->x[24] skipped off-map (e70)'),
+    'by_00e88':                          _offmap_blr_guard(
+        'c->pc = x9; c->x[30] = 0x7000000e8cull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[20] = x20; c->x[21] = c->x[21]; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x9 is off-map or unmapped (e88)', cond='x9', w=0xd63f0120),
+    'by_00e9c':                          _offmap_load_guard(
+        0xf940228a, 'x20', 'x10', 'x20 + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (e9c)'),
+    'by_00eb0':                          _offmap_load_guard(
+        0xf9402289, 'x20', 'x9', 'x20 + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x20 skipped off-map (eb0)'),
+    'by_00ec8':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000ea2fe4(Cpu *c); c->x[30] = 0x7000000eccull; c->x[0] = x0; c->x[21] = c->x[21]; f_7000ea2fe4(c);',
+        'f_7000ea2fe4 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (ec8)'),
+    'by_00ee8':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000ea2fe4(Cpu *c); c->x[30] = 0x7000000eecull; c->x[0] = x0; c->x[20] = x20; c->x[21] = c->x[21]; f_7000ea2fe4(c);',
+        'f_7000ea2fe4 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (ee8)'),
+    'by_00f08':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000000f0cull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[20] = x20; c->x[21] = c->x[21]; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (f08)'),
+    'by_00f18':                          _offmap_load_guard(
+        0xf9402129, 'x9', 'x9', 'x9 + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (f18)'),
+    'by_00f34':                          _offmap_blr_guard(
+        'c->pc = x9; c->x[30] = 0x7000000f38ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[20] = x20; c->x[21] = c->x[21]; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x9 is off-map or unmapped (f34)', cond='x9', w=0xd63f0120),
+    'by_00f40':                          _offmap_load_guard(
+        0xf9400108, 'x8', 'x8', 'x8 + 0x0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (f40)'),
+    'by_00f44':                          _offmap_load_guard(
+        0xf9404508, 'x8', 'x8', 'x8 + 0x88ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (f44)'),
+    'by_00f54':                          _offmap_load_guard(
+        0xb940910a, 'x8', 'x10', 'x8 + 0x90ull', 'LD32',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (f54)'),
+    'by_00f58':                          _offmap_load_guard(
+        0xf9401d09, 'x8', 'x9', 'x8 + 0x38ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (f58)'),
+    'by_00f68':                          _offmap_load_guard(
+        0xf940216b, 'c->x[11]', 'c->x[11]', 'c->x[11] + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via c->x[11] skipped off-map (f68)'),
+    'by_00f7c':                          _offmap_load_guard(
+        0xf9402108, 'x8', 'x8', 'x8 + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x8 skipped off-map (f7c)'),
+    'by_00f98':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000000f9cull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[20] = x20; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (f98)'),
+    'by_00fc4':                          _offmap_load_guard(
+        0xb9800128, 'x9', 'x8', 'x9 + 0x0ull', '(uint64_t)(int64_t)(int32_t)LD32',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (fc4)'),
+    'by_00fcc':                          _offmap_load_guard(
+        0xf9400535, 'x9', 'c->x[21]', 'x9 + 0x8ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via x9 skipped off-map (fcc)'),
+    'by_00fd4':                          _offmap_load_guard(
+        0xf94002a0, 'c->x[21]', 'x0', 'c->x[21] + 0x0ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via c->x[21] skipped off-map (fd4)'),
+    'by_00fdc':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_7000ea2fe4(Cpu *c); c->x[30] = 0x7000000fe0ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[20] = x20; c->x[21] = c->x[21]; f_7000ea2fe4(c);',
+        'f_7000ea2fe4 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (fdc)'),
+    'by_01014':                          _offmap_call_skip_guard(
+        'x0',
+        'extern void f_70015a0530(Cpu *c); c->x[30] = 0x7000001018ull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[20] = x20; c->x[21] = c->x[21]; f_70015a0530(c);',
+        'f_70015a0530 skipped on the off-map x0 of the answered-0 walk; the dead 0 answer lands where the guarded chain already expects 0 (1014)'),
+    'by_01018':                          _offmap_store_guard(
+        0xf90002ff, 'c->x[23]', 'c->x[23] + 0x0ull', 'ST64', '0ull',
+        'f_70000008e0 answered-0 registry-tail store via c->x[23] skipped off-map (1018)'),
+    'by_01038':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x700000103cull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; c->x[10] = x10; c->x[20] = x20; c->x[21] = c->x[21]; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (1038)'),
+    'by_01044':                          _offmap_load_guard(
+        0xf94022a8, 'c->x[21]', 'x8', 'c->x[21] + 0x40ull', 'LD64',
+        'f_70000008e0 answered-0 registry-tail load via c->x[21] skipped off-map (1044)'),
+    'by_01058':                          _offmap_load_guard(
+        0xb9400328, 'c->x[25]', 'x8', 'c->x[25] + 0x0ull', 'LD32',
+        'f_70000008e0 answered-0 registry-tail load via c->x[25] skipped off-map (1058)'),
+    'by_01068':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x700000106cull; c->x[0] = x0; c->x[8] = x8; rt_dispatch(c);',
+        'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (1068)'),
 }
 
 

@@ -89,9 +89,43 @@ static void args_check(uint64_t a, uint64_t lr) {
         }
 }
 
+// SAVAGEWIND_FNPROF_ARM=<hex>: from the FIRST entry of that function, one line per MAIN-MODULE guest
+// function entry afterwards (addr from caller lr; sdk loops of background threads stay out) - the ORDERED
+// history of a phase, e.g. nnMain's dead-walk tail after its init ipc answered ok but no frame presented
+// (runs 108-111). Capped by SAVAGEWIND_FNPROF_ARM_MAX (default 2M lines) so a hot phase cannot bury the
+// log; the cap line marks where tracing stopped.
+static uint64_t arm_addr;
+static int arm_state = -1;  // -1: env not read, 0: off, 1: waiting for arm_addr, 2: tracing
+static long arm_left;
+static int arm_all;  // SAVAGEWIND_FNPROF_ARM_ALL=1: log sdk/thunk entries too (everything, not just main)
+
+static void arm_check(uint64_t a, uint64_t lr) {
+    if (arm_state < 0) {
+        const char *e = getenv("SAVAGEWIND_FNPROF_ARM");
+        arm_addr = e ? strtoull(e, NULL, 16) : 0;
+        arm_left = getenv("SAVAGEWIND_FNPROF_ARM_MAX") ? atol(getenv("SAVAGEWIND_FNPROF_ARM_MAX")) : 2000000;
+        arm_all = getenv("SAVAGEWIND_FNPROF_ARM_ALL") != NULL;
+        arm_state = arm_addr ? 1 : 0;
+    }
+    if (arm_state == 1) {
+        if (a != arm_addr) return;
+        arm_state = 2;
+        LOG("[fnprof-arm] armed at %llx\n", (unsigned long long)a);
+    }
+    if (arm_state != 2) return;
+    if (arm_all ? 0 : (a - GUEST_LO >= 0x1e98000ull)) return;  // main module only unless ARM_ALL
+    if (arm_left-- <= 0) {
+        arm_state = 0;
+        LOG("[fnprof-arm] cap reached, tracing stopped\n");
+        return;
+    }
+    LOG("[fn] %llx from %llx\n", (unsigned long long)a, (unsigned long long)lr);
+}
+
 void fnprof_hit(uint64_t a, uint64_t lr, uint64_t x0) {
     if (bt_n) bt_check(a, lr, x0);
     if (args_n) args_check(a, lr);
+    if (arm_state != 0) arm_check(a, lr);
     uint32_t h = (uint32_t)((a >> 2) * 0x9E3779B1u) & (NSLOT - 1);
     for (int n = 0; n < NSLOT; n++, h = (h + 1) & (NSLOT - 1)) {
         uint64_t cur = atomic_load_explicit(&slots[h].addr, memory_order_relaxed);

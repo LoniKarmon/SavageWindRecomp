@@ -8,6 +8,7 @@
 
 #include "hle.h"
 #include "platform.h"
+#include "control_mem.h"
 
 volatile int g_fnprof;
 
@@ -122,10 +123,90 @@ static void arm_check(uint64_t a, uint64_t lr) {
     LOG("[fn] %llx from %llx\n", (unsigned long long)a, (unsigned long long)lr);
 }
 
+// SAVAGEWIND_FNPROF_TAIL=<a>[,<b>...]: on the FIRST entry of each listed function, print a forensic
+// one-liner with the live Cpu registers plus the guest words nnMain's e00/e04/e08/e14 virtual-call tail
+// is about to dereference (Application vtable, its slot [0x28], the GOT words behind the 61ddc argument
+// load and the e14 exit gate, the RootTask list head). run113 proved that tail never dispatched (no [fn]
+// for the slot target f_7000e952b8) - one of these words is the dead one; which, settles the fix.
+static uint64_t tail_addrs[8];
+static int tail_n = -1, tail_fired[8];
+
+static uint64_t tail_word(uint64_t a) {  // committed guest word, else raw host-heap word, else 0
+    if (a < 0x1000) return 0;            // near-NULL: never raw-deref the host's unmapped page-0
+    uint64_t v;
+    if (control_mem_peek(a, &v, 8)) return v;
+    if (a < 0x7fff00000000ull) return *(volatile uint64_t *)(uintptr_t)a;  // host malloc'd node
+    return 0;
+}
+
+// SAVAGEWIND_FNPROF_TAIL_LR=<hex lr>: fire the same dump the FIRST time any function is entered FROM that
+// return address -- for straight-line tails that call no function before the site of interest, the last
+// call's entry is the exact moment to snapshot (run115: the e08 guard still skipped even with the slot
+// seeded at 61b80, so [x20]'s vptr must change AFTER the f_7000e952b8-entry dump; lr 7000c61d90 is nnMain's
+// last TLS thunk call, ~4 instructions before the e00-e08 virtual call reads it). Also runs dispatch_lookup
+// on the slot values, splitting "wrong pointer" from "lookup failure" in the same snapshot.
+static uint64_t tlr_addr;
+static int tlr_state = -1;
+
+static void tlr_dump(uint64_t lr, Cpu *c) {
+    uint64_t x20 = c->x[20], x23 = c->x[23], vt = tail_word(x20), sl = tail_word(vt + 0x28);
+    // SAVAGEWIND_FNPROF_TAIL_RESEED=<addr>:<value>: re-write a boot slot AT the snapshot instant, after the
+    // ctor-drain and early guest stores are done -- run116: a load-time seed of [0x7001d76038] read good at
+    // the d90 thunk entry but the e04 guard still answered 0, so the slot's LAST writer sits between them;
+    // re-seeding here proves whether the e04/e08 chain then dispatches (the virtual "run" = f_7000e952b8).
+    const char *rs = getenv("SAVAGEWIND_FNPROF_TAIL_RESEED");
+    if (rs) {
+        char *end;
+        uint64_t a = strtoull(rs, &end, 16), v = end && *end == ':' ? strtoull(end + 1, &end, 16) : 0;
+        if (a >= GUEST_LO && a + 8 <= GUEST_HI) *(volatile uint64_t *)(uintptr_t)a = v;
+    }
+    x20 = c->x[20], vt = tail_word(x20), sl = tail_word(vt + 0x28);  // re-read post-reseed
+    LOG("[tail-lr] lr=%llx x20=%llx x21=%llx x22=%llx x23=%llx [x20]=%llx [[x20]+0x28]=%llx dl=%d\n",
+        (unsigned long long)lr, (unsigned long long)x20, (unsigned long long)c->x[21],
+        (unsigned long long)c->x[22], (unsigned long long)x23, (unsigned long long)vt,
+        (unsigned long long)sl, dispatch_lookup(sl) != NULL);
+    LOG("[tail-lr]  [[x20]+0x58]=%llx dl58=%d [x23]=%llx slot_6b8e0=%llx [[slot_6b8e0]]=%llx\n",
+        (unsigned long long)tail_word(vt + 0x58), dispatch_lookup(tail_word(vt + 0x58)) != NULL,
+        (unsigned long long)tail_word(x23), (unsigned long long)tail_word(0x7001d6b8e0ull),
+        (unsigned long long)tail_word(tail_word(0x7001d6b8e0ull)));
+}
+
+static void tail_check(uint64_t a, uint64_t lr, Cpu *c) {
+    if (tail_n < 0) {
+        tail_n = 0;
+        const char *e = getenv("SAVAGEWIND_FNPROF_TAIL");
+        for (const char *p = e; p && *p && tail_n < 8; tail_n++) {
+            tail_addrs[tail_n] = strtoull(p, (char **)&p, 16);
+            while (*p == ',') p++;
+        }
+    }
+    for (int i = 0; i < tail_n; i++) {
+        if (a != tail_addrs[i] || tail_fired[i]++) continue;
+        uint64_t x20 = c->x[20], x23 = c->x[23], vt = tail_word(x20), sl = tail_word(vt + 0x28);
+        LOG("[tail] f_%llx x0=%llx x20=%llx x21=%llx x22=%llx x23=%llx x24=%llx\n", (unsigned long long)a,
+            (unsigned long long)c->x[0], (unsigned long long)x20, (unsigned long long)c->x[21],
+            (unsigned long long)c->x[22], (unsigned long long)x23, (unsigned long long)c->x[24]);
+        LOG("[tail]  [x20]=%llx [[x20]+0x28]=%llx [x0]=%llx [[x0]+0x28]=%llx [x23]=%llx\n",
+            (unsigned long long)vt, (unsigned long long)sl, (unsigned long long)c->x[0],
+            (unsigned long long)tail_word(tail_word(c->x[0]) + 0x28), (unsigned long long)tail_word(x23));
+        LOG("[tail]  slot_6b678=%llx slot_6b8e0=%llx [[slot_6b8e0]]=%llx slot_1d78250=%llx slot_1d78358=%llx\n",
+            (unsigned long long)tail_word(0x7001d6b678ull), (unsigned long long)tail_word(0x7001d6b8e0ull),
+            (unsigned long long)tail_word(tail_word(0x7001d6b8e0ull)),
+            (unsigned long long)tail_word(0x7001d78250ull), (unsigned long long)tail_word(0x7001d78358ull));
+    }
+    if (tlr_state < 0) {
+        const char *e = getenv("SAVAGEWIND_FNPROF_TAIL_LR");
+        tlr_addr = e ? strtoull(e, NULL, 16) : 0;
+        tlr_state = tlr_addr ? 1 : 0;
+    }
+    if (tlr_state == 1 && lr == tlr_addr) { tlr_state = 0; tlr_dump(lr, c); }
+}
+
 void fnprof_hit(uint64_t a, uint64_t lr, uint64_t x0) {
     if (bt_n) bt_check(a, lr, x0);
     if (args_n) args_check(a, lr);
     if (arm_state != 0) arm_check(a, lr);
+    if (tail_n != 0 || tlr_state != 0) { Cpu *cc = kernel_current_cpu(); if (cc) tail_check(a, lr, cc); }
     uint32_t h = (uint32_t)((a >> 2) * 0x9E3779B1u) & (NSLOT - 1);
     for (int n = 0; n < NSLOT; n++, h = (h + 1) & (NSLOT - 1)) {
         uint64_t cur = atomic_load_explicit(&slots[h].addr, memory_order_relaxed);

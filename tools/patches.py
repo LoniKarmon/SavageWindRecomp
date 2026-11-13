@@ -4005,20 +4005,20 @@ PATCHES = {
         0xf9433d08, 'x8', 'x8', 'x8 + 0x678ull', 'LD64',
         'caller f_7000c61540 answered-0 walk load via x8 skipped off-map (1df4)'),
     'bu_61e00':                          _offmap_load_guard(
-        0xf9400288, 'c->x[20]', 'x8', 'c->x[20] + 0x0ull', 'LD64',
-        'caller f_7000c61540 answered-0 walk load via c->x[20] skipped off-map (1e00)'),
+        0xf9400288, 'c->x[20]', 'c->x[8]', 'c->x[20] + 0x0ull', 'LD64',
+        'caller f_7000c61540 answered-0 walk load via c->x[20] skipped off-map, result written through Cpu so the guarded site\'s resync tail cannot discard it (1e00)'),
     'bu_61e04':                          _offmap_load_guard(
-        0xf9401508, 'x8', 'x8', 'x8 + 0x28ull', 'LD64',
-        'caller f_7000c61540 answered-0 walk load via x8 skipped off-map (1e04)'),
+        0xf9401508, 'c->x[8]', 'c->x[8]', 'c->x[8] + 0x28ull', 'LD64',
+        'caller f_7000c61540 answered-0 walk load via x8 skipped off-map, Cpu-propagating so 1e04/1e08 read 1e00\'s value (1e04)'),
     'bu_61e08':                          _offmap_blr_guard(
         'c->pc = x8; c->x[30] = 0x7000c61e0cull; c->x[0] = x0; c->x[8] = x8; c->x[9] = x9; rt_dispatch(c);',
         'caller-walk virtual probe answered 0 through the dispatch_lookup backstop when the dispatch x8 is off-map or unmapped (1e08)'),
     'bu_61e10':                          _offmap_load_guard(
-        0xf9447108, 'x8', 'x8', 'x8 + 0x8e0ull', 'LD64',
-        'caller f_7000c61540 answered-0 walk load via x8 skipped off-map (1e10)'),
+        0xf9447108, 'c->x[8]', 'c->x[8]', 'c->x[8] + 0x8e0ull', 'LD64',
+        'caller f_7000c61540 answered-0 walk load via x8 skipped off-map, Cpu-propagating so 1e14 reads the gate pointer (1e10)'),
     'bu_61e14':                          _offmap_load_guard(
-        0xf9400100, 'x8', 'x0', 'x8 + 0x0ull', 'LD64',
-        'caller f_7000c61540 answered-0 walk load via x8 skipped off-map (1e14)'),
+        0xf9400100, 'c->x[8]', 'c->x[0]', 'c->x[8] + 0x0ull', 'LD64',
+        'caller f_7000c61540 answered-0 walk load via x8 skipped off-map, Cpu-propagating so the cbnz x0 gate sees the gate word (1e14)'),
     'bu_61e3c':                          _offmap_load_guard(
         0xf9400755, 'c->x[26]', 'c->x[21]', 'c->x[26] + 0x8ull', 'LD64',
         'caller f_7000c61540 answered-0 walk load via c->x[26] skipped off-map (1e3c)'),
@@ -4334,6 +4334,77 @@ PATCHES = {
     'bu_625cc':                          _offmap_store_guard(
         0xf9000149, 'x10', 'x10 + 0x0ull', 'ST64', 'x9',
         'caller f_7000c61540 answered-0 walk store via x10 skipped off-map (25cc)'),
+    # ---- family #55 (run117): the frame-loop starter f_7000e952b8 the seed lands in vtable slot
+    #      [0x7001d76038] is finally reached and dispatched; the nnMain walk 1e00/1e04/1e10/1e14
+    #      above stores its load results through Cpu now, because the generator resyncs
+    #      Cpu->locals after every patched site and discarded local-only results (silent exit:
+    #      stale c->x[8] at 1e04/1e08, garbage gate word at 1e14).  The starter's whole lift gets
+    #      the one-sweep insurance: every load result lands in c->x[8] for the next guarded site,
+    #      all five virtual probes answer 0 through the dispatch_lookup backstop (the slots here
+    #      are static R_RELATIVE placeholders), the dead x23 chain answers 0 before its near-NULL
+    #      fault, x20-based stores skip on a dead object, sp-based memory passes through (the
+    #      guest stack is mapped), the arg-word LD32s read the mapped caller stack, and
+    #      f_7000003f10/f_7000e96ce4/f_7000e9706c run unguarded as direct internal calls.
+    'bu_952d0':                          _offmap_load_guard(
+        0xf9400008, 'x0', 'c->x[8]', 'x0 + 0x0ull', 'LD64',
+        'f_7000e952b8 frame-loop starter vtable load via x0 skipped off-map, result through Cpu for the next guarded site (952d0)'),
+    'bu_952e4':                          _offmap_load_guard(
+        0xf9402d08, 'c->x[8]', 'c->x[8]', 'c->x[8] + 0x58ull', 'LD64',
+        'f_7000e952b8 slot load via c->x[8] skipped off-map, result through Cpu for the virtual probe (952e4)'),
+    'bu_952e8':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e952ecull; c->x[1] = x1; c->x[8] = x8; c->x[20] = x20; c->sp = sp_; rt_dispatch(c);',
+        'f_7000e952b8 virtual probe answered 0 through the dispatch_lookup backstop when the slot is a static placeholder; x30 rides c->x directly, x19 is Cpu-resident across calls (952e8)'),
+    'bu_95320':                          _offmap_load_guard(
+        0xf9400288, 'x20', 'c->x[8]', 'x20 + 0x0ull', 'LD64',
+        'f_7000e952b8 vtable reload via x20 skipped off-map, result through Cpu for the next guarded site (95320)'),
+    'bu_95330':                          _offmap_load_guard(
+        0xf9403908, 'c->x[8]', 'c->x[8]', 'c->x[8] + 0x70ull', 'LD64',
+        'f_7000e952b8 slot load via c->x[8] skipped off-map, result through Cpu for the virtual probe (95330)'),
+    'bu_95334':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e95338ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'f_7000e952b8 virtual probe answered 0 through the dispatch_lookup backstop when the slot is a static placeholder (95334)'),
+    'bu_95338':                          _offmap_store_guard(
+        0xf9002280, 'x20', 'x20 + 0x40ull', 'ST64', 'x0',
+        'f_7000e952b8 answered-0 walk store via x20 skipped off-map (95338)'),
+    'bu_95340':                          _offmap_load_guard(
+        0xf94002e8, 'c->x[23]', 'c->x[8]', 'c->x[23] + 0x0ull', 'LD64',
+        'f_7000e952b8 near-NULL load via the answered-0 f_7000003f10 answer x23 answered 0, result through Cpu for 95344 (95340)'),
+    'bu_95344':                          _offmap_load_guard(
+        0xf9401508, 'c->x[8]', 'c->x[8]', 'c->x[8] + 0x28ull', 'LD64',
+        'f_7000e952b8 slot load via the answered-0 chain c->x[8] answered 0, result through Cpu for the virtual probe (95344)'),
+    'bu_95348':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e9534cull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'f_7000e952b8 virtual probe answered 0 through the dispatch_lookup backstop when the dead x23 chain left 0 (95348)'),
+    'bu_95354':                          _offmap_store_guard(
+        0xf9002697, 'x20', 'x20 + 0x48ull', 'ST64', 'c->x[23]',
+        'f_7000e952b8 answered-0 walk store via x20 skipped off-map (95354)'),
+    'bu_9535c':                          _offmap_load_guard(
+        0xb94002a8, 'c->x[21]', 'c->x[8]', 'c->x[21] + 0x0ull', 'LD32',
+        'f_7000e952b8 argument word load via c->x[21] skipped off-map, result through Cpu (9535c)'),
+    'bu_9536c':                          _offmap_load_guard(
+        0xb94006a8, 'c->x[21]', 'c->x[8]', 'c->x[21] + 0x4ull', 'LD32',
+        'f_7000e952b8 argument word load via c->x[21] skipped off-map, result through Cpu (9536c)'),
+    'bu_95384':                          _offmap_load_guard(
+        0xf9400288, 'x20', 'c->x[8]', 'x20 + 0x0ull', 'LD64',
+        'f_7000e952b8 vtable reload via x20 skipped off-map, result through Cpu for the next guarded site (95384)'),
+    'bu_95388':                          _offmap_store_guard(
+        0xf9001e80, 'x20', 'x20 + 0x38ull', 'ST64', 'x0',
+        'f_7000e952b8 f_7000e9706c return store via x20 skipped off-map (95388)'),
+    'bu_95390':                          _offmap_load_guard(
+        0xf9403508, 'c->x[8]', 'c->x[8]', 'c->x[8] + 0x68ull', 'LD64',
+        'f_7000e952b8 slot load via c->x[8] skipped off-map, result through Cpu for the virtual probe (95390)'),
+    'bu_95394':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e95398ull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'f_7000e952b8 virtual probe answered 0 through the dispatch_lookup backstop when the slot is a static placeholder (95394)'),
+    'bu_95398':                          _offmap_load_guard(
+        0xf9400288, 'x20', 'c->x[8]', 'x20 + 0x0ull', 'LD64',
+        'f_7000e952b8 vtable reload via x20 skipped off-map, result through Cpu for the next guarded site (95398)'),
+    'bu_953a4':                          _offmap_load_guard(
+        0xf9403108, 'c->x[8]', 'c->x[8]', 'c->x[8] + 0x60ull', 'LD64',
+        'f_7000e952b8 slot load via c->x[8] skipped off-map, result through Cpu for the virtual probe (953a4)'),
+    'bu_953a8':                          _offmap_blr_guard(
+        'c->pc = x8; c->x[30] = 0x7000e953acull; c->x[0] = x0; c->x[1] = x1; c->x[8] = x8; rt_dispatch(c);',
+        'f_7000e952b8 virtual probe answered 0 through the dispatch_lookup backstop when the slot is a static placeholder (953a8)'),
     'bv_188b8':                          _offmap_load_guard(
         0xf9475e68, 'c->x[19]', 'x8', 'c->x[19] + 0xeb8ull', 'LD64',
         'f_7000d188a4 answered-0 walk load via c->x[19] skipped off-map (88b8)'),

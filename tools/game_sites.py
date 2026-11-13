@@ -1543,6 +1543,26 @@ SITES = [
     Site('bu_62590',                     'code', 'f9400141 90000000/9f00001f 91000000/ffc003ff b9400fe3 90000002/9f00001f 91000042/ffc003ff 94000000/fc000000 14000000/fc000000', 0),  # -> 0x7000c62590
     Site('bu_625a8',                     'code', '94000000/fc000000 14000000/fc000000 b9400fea aa0b03e0 aa0803f5 7101c95f f9400fea 54000001/ff00001f', 0),  # -> 0x7000c625a8
     Site('bu_625cc',                     'code', 'f9000149 f9400fea aa0b03e0 aa0803f5 14000000/fc000000', 0),  # -> 0x7000c625cc
+    Site('bu_952d0',                     'code', 'f9400008 aa0303f5 aa0203f6 aa0103f3 aa0003f4 f9402d08 d63f0100 90000008/9f00001f', 0),  # -> 0x7000e952d0
+    Site('bu_952e4',                     'code', 'f9402d08 d63f0100 90000008/9f00001f 90000009/9f00001f 91000129/ffc003ff f9400108/ffc003ff 910023e1 aa1f03e0', 0),  # -> 0x7000e952e4
+    Site('bu_952e8',                     'code', 'd63f0100 90000008/9f00001f 90000009/9f00001f 91000129/ffc003ff f9400108/ffc003ff 910023e1 aa1f03e0 aa1303e2', 0),  # -> 0x7000e952e8
+    Site('bu_95320',                     'code', 'f9400288 aa0003f7 aa1403e0 aa1703e1 f9403908 d63f0100 f9002280 aa1703e0', 0),  # -> 0x7000e95320
+    Site('bu_95330',                     'code', 'f9403908 d63f0100 f9002280 aa1703e0 f94002e8 f9401508 d63f0100 910023e0', 0),  # -> 0x7000e95330
+    Site('bu_95334',                     'code', 'd63f0100 f9002280 aa1703e0 f94002e8 f9401508 d63f0100 910023e0 aa1603e1', 0),  # -> 0x7000e95334
+    Site('bu_95338',                     'code', 'f9002280 aa1703e0 f94002e8 f9401508 d63f0100 910023e0 aa1603e1 f9002697', 0),  # -> 0x7000e95338
+    Site('bu_95340',                     'code', 'f94002e8 f9401508 d63f0100 910023e0 aa1603e1 f9002697 94000000/fc000000 b94002a8', 0),  # -> 0x7000e95340
+    Site('bu_95344',                     'code', 'f9401508 d63f0100 910023e0 aa1603e1 f9002697 94000000/fc000000 b94002a8 a90253f3', 0),  # -> 0x7000e95344
+    Site('bu_95348',                     'code', 'd63f0100 910023e0 aa1603e1 f9002697 94000000/fc000000 b94002a8 a90253f3 34000008/ff00001f', 0),  # -> 0x7000e95348
+    Site('bu_95354',                     'code', 'f9002697 94000000/fc000000 b94002a8 a90253f3 34000008/ff00001f b9000fe8 b94006a8 3100051f', 0),  # -> 0x7000e95354
+    Site('bu_9535c',                     'code', 'b94002a8 a90253f3 34000008/ff00001f b9000fe8 b94006a8 3100051f 54000000/ff00001f b90013e8', 0),  # -> 0x7000e9535c
+    Site('bu_9536c',                     'code', 'b94006a8 3100051f 54000000/ff00001f b90013e8 910023e0 94000000/fc000000 f9400288 f9001e80', 0),  # -> 0x7000e9536c
+    Site('bu_95384',                     'code', 'f9400288 f9001e80 aa1403e0 f9403508 d63f0100 f9400288 aa1403e0 aa1303e1', 0),  # -> 0x7000e95384
+    Site('bu_95388',                     'code', 'f9001e80 aa1403e0 f9403508 d63f0100 f9400288 aa1403e0 aa1303e1 f9403108', 0),  # -> 0x7000e95388
+    Site('bu_95390',                     'code', 'f9403508 d63f0100 f9400288 aa1403e0 aa1303e1 f9403108 d63f0100 a9464ff4', 0),  # -> 0x7000e95390
+    Site('bu_95394',                     'code', 'd63f0100 f9400288 aa1403e0 aa1303e1 f9403108 d63f0100 a9464ff4 f94023f7', 0),  # -> 0x7000e95394
+    Site('bu_95398',                     'code', 'f9400288 aa1403e0 aa1303e1 f9403108 d63f0100 a9464ff4 f94023f7 a94557f6', 0),  # -> 0x7000e95398
+    Site('bu_953a4',                     'code', 'f9403108 d63f0100 a9464ff4 f94023f7 a94557f6 a9437bfd 9101c3ff d65f03c0', 0),  # -> 0x7000e953a4
+    Site('bu_953a8',                     'code', 'd63f0100 a9464ff4 f94023f7 a94557f6 a9437bfd 9101c3ff d65f03c0', 0),  # -> 0x7000e953a8
     Site('bv_188b8',                     'code', 'f9475e68 b5000008/ff00001f 9000000b/9f00001f f940016b/ffc003ff f9400169 b4000009/ff00001f aa0003e8 b4000000/ff00001f', 0),  # -> 0x7000d188b8
     Site('bv_188c4',                     'code', 'f942196b f9400169 b4000009/ff00001f aa0003e8 b4000000/ff00001f f9400109 9000000a/9f00001f f9401929', 0),  # -> 0x7000d188c4
     Site('bv_188c8',                     'code', 'f9400169 b4000009/ff00001f aa0003e8 b4000000/ff00001f f9400109 9000000a/9f00001f f9401929 f940014a/ffc003ff', 0),  # -> 0x7000d188c8
@@ -2761,6 +2781,21 @@ OPTIONAL_GROUPS = [
      'bu_62490', 'bu_624a4', 'bu_624b4', 'bu_624c8', 'bu_624e4',
      'bu_624f0', 'bu_6250c', 'bu_62520', 'bu_62580', 'bu_62590',
      'bu_625a8', 'bu_625cc'),
+    ('bu_952d0', 'bu_952e4', 'bu_952e8', 'bu_95320', 'bu_95330',#  (run117's family #55: the seed lands 7000e952b8 in vtable slot [0x7001d76038]
+                                              #   and nnMain's e00-e04-e08 walk finally dispatches into the frame-loop starter -- its
+                                              #   guarded loads in #50-style store through Cpu now, because the generator resyncs
+                                              #   Cpu->locals after every patched site and discarded local-only results (the silent
+                                              #   straight-line exit: stale c->x[8] at 1e04/1e08, garbage gate word at 1e14). The
+                                              #   starter's whole lift gets the one-sweep insurance: every load result lands in c->x[8]
+                                              #   for the next guarded site, all five virtual probes answer 0 through the
+                                              #   dispatch_lookup backstop (their vtable slots are static R_RELATIVE placeholders), the
+                                              #   dead x23 chain from the answered-0 f_7000003f10 answers 0 before its near-NULL fault,
+                                              #   x20-based stores skip on a dead object, sp-based memory passes through (the guest
+                                              #   stack is mapped) and f_7000003f10/f_7000e96ce4/f_7000e9706c run unguarded as direct
+                                              #   calls; on a real Switch every guarded else re-runs the original instruction verbatim.
+     'bu_95334', 'bu_95338', 'bu_95340', 'bu_95344', 'bu_95348',
+     'bu_95354', 'bu_9535c', 'bu_9536c', 'bu_95384', 'bu_95388',
+     'bu_95390', 'bu_95394', 'bu_95398', 'bu_953a4', 'bu_953a8'),
     ('bv_188b8', 'bv_188c4', 'bv_188c8', 'bv_188d8', 'bv_188e0',#  (run84's fault family: the step-callee f_7000d188a4 answered-0 walk, one call deeper
                                               #   than the caller cleared in #46: the guarded caller reached its bl f_7000d188a4 at
                                               #   0x7000c6187c with a real x0, the lock thunk f_7000ea3c44 (run81's family) answered
